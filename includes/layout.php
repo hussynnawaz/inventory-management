@@ -2,13 +2,16 @@
 // Shared authenticated layout
 // Usage: require_once __DIR__ . '/../includes/layout.php';
 //        then call render_page($title, $content_html) OR include after setting $page_title + $page_content
-function render_page(string $title, string $content): void {
+if (!function_exists('render_page')) {
+function render_page(string $title, string $content, string $footer = ''): void {
     $config = require __DIR__ . '/../config/app.php';
     $user = current_user();
-    $logo = $config['logo'];
+    $logo = asset($config['logo']);
     $nav = [
         'dashboard'  => ['label' => 'Dashboard',  'href' => '/views/dashboard.php',  'icon' => 'M3 12l9-9 9 9M5 10v10h14V10'],
         'sales'      => ['label' => 'Sales',      'href' => '/views/sales.php',      'icon' => 'M3 3h18v18H3zM3 9h18M9 21V9'],
+        'sale_new'   => ['label' => 'New Sale Order', 'href' => '/views/sale_order_new.php', 'icon' => 'M12 5v14M5 12h14'],
+        'customers'  => ['label' => 'Customers',  'href' => '/views/customers.php',  'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM3 21v-2a4 4 0 014-4h10a4 4 0 014 4v2'],
         'purchases'  => ['label' => 'Purchases',  'href' => '/views/purchases.php',  'icon' => 'M3 7h18v12H3zM3 7l3-4h12l3 4'],
         'returns'    => ['label' => 'Returns',    'href' => '/views/returns.php',    'icon' => 'M3 10h12M3 10l4-4M3 10l4 4M21 14H9m12 0l-4 4m4-4l-4-4'],
         'inventory'  => ['label' => 'Inventory',  'href' => '/views/inventory.php',  'icon' => 'M4 4h16v16H4zM4 9h16M9 4v16'],
@@ -22,14 +25,14 @@ function render_page(string $title, string $content): void {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?= e($title) ?> &middot; <?= e($config['app_name']) ?></title>
-        <link rel="stylesheet" href="/public/assets/css/output.css">
+        <link rel="stylesheet" href="<?= e(asset('assets/css/output.css')) ?>">
     </head>
     <body class="bg-slate-100 text-slate-800">
         <div class="flex min-h-screen">
             <!-- Sidebar -->
             <aside class="w-64 bg-white border-r border-slate-200 flex flex-col">
                 <div class="flex items-center gap-3 px-5 h-16 border-b border-slate-200">
-                    <img src="/<?= e($logo) ?>" alt="MJ Traders" class="h-10 w-auto">
+                    <img src="<?= e($logo) ?>" alt="MJ Traders" class="h-10 w-auto">
                     <span class="font-semibold text-slate-800 leading-tight">MJ Traders</span>
                 </div>
                 <nav class="flex-1 px-3 py-4 space-y-1">
@@ -61,7 +64,9 @@ function render_page(string $title, string $content): void {
                 </div>
             </main>
         </div>
+        <?= $footer ?>
     </body>
     </html>
     <?php
+}
 }

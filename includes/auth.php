@@ -25,3 +25,11 @@ function redirect(string $url): void {
     header("Location: $url");
     exit;
 }
+
+// Build a correct public asset URL using the configured base_url.
+// Paths are relative to the public/ directory (the web root).
+function asset(string $path): string {
+    $config = require __DIR__ . '/../config/app.php';
+    $base = rtrim($config['base_url'], '/');
+    return $base . '/public/' . ltrim($path, '/');
+}

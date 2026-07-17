@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $config = require __DIR__ . '/config/app.php';
-$logo = $config['logo'];
+$logo = asset($config['logo']);
 ?>
 <!DOCTYPE html>
 <html lang="en" class="light">
@@ -36,13 +36,13 @@ $logo = $config['logo'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login &middot; <?= e($config['app_name']) ?></title>
-    <link rel="stylesheet" href="/public/assets/css/output.css">
+    <link rel="stylesheet" href="<?= e(asset('assets/css/output.css')) ?>">
 </head>
 <body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
     <div class="w-full max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
             <div class="flex flex-col items-center mb-6">
-                <img src="/<?= e($logo) ?>" alt="MJ Traders" class="h-20 w-auto mb-3">
+                <img src="<?= e($logo) ?>" alt="MJ Traders" class="h-20 w-auto mb-3">
                 <h1 class="text-xl font-semibold text-slate-800"><?= e($config['app_name']) ?></h1>
                 <p class="text-sm text-slate-500">Sign in to your account</p>
             </div>

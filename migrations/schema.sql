@@ -23,7 +23,7 @@ CREATE TABLE users (
 
 -- Default admin account: admin / admin123
 INSERT INTO users (username, password, full_name, role)
-VALUES ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin');
+VALUES ('admin', '$2y$10$gi6z6KNXb/PPf1MrjG/Hn..1VSkWZ.WbFJ8yDTMuwoIBEz91fPhfW', 'Administrator', 'admin');
 
 -- ---------------------------------------------------------------------------
 -- Products (inventory)
@@ -46,11 +46,18 @@ CREATE TABLE products (
 -- ---------------------------------------------------------------------------
 DROP TABLE IF EXISTS customers;
 CREATE TABLE customers (
-  id         INT AUTO_INCREMENT PRIMARY KEY,
-  name       VARCHAR(120) NOT NULL,
-  phone      VARCHAR(30)  DEFAULT '',
-  email      VARCHAR(120) DEFAULT '',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  code         VARCHAR(30)  NOT NULL UNIQUE,
+  name         VARCHAR(120) NOT NULL,
+  contact      VARCHAR(30)  DEFAULT '',
+  delivery_route VARCHAR(80) DEFAULT '',
+  salesman     VARCHAR(80)  DEFAULT '',
+  ntn_no       VARCHAR(30)  DEFAULT '',
+  sales_tax_no VARCHAR(30)  DEFAULT '',
+  cnic         VARCHAR(20)  DEFAULT '',
+  address      TEXT,
+  email        VARCHAR(120) DEFAULT '',
+  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS suppliers;
@@ -84,6 +91,49 @@ CREATE TABLE sale_items (
   quantity   INT NOT NULL,
   price      DECIMAL(12,2) NOT NULL,
   FOREIGN KEY (sale_id) REFERENCES sales(id),
+  FOREIGN KEY (product_id) REFERENCES products(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- Sale Orders (detailed order with customer header info)
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS sale_orders;
+CREATE TABLE sale_orders (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  order_no        VARCHAR(50) NOT NULL UNIQUE,
+  order_date      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  customer_id     INT NULL,
+  customer_code   VARCHAR(30) DEFAULT '',
+  customer_name   VARCHAR(120) DEFAULT '',
+  contact         VARCHAR(30) DEFAULT '',
+  delivery_route  VARCHAR(80) DEFAULT '',
+  salesman        VARCHAR(80) DEFAULT '',
+  ntn_no          VARCHAR(30) DEFAULT '',
+  sales_tax_no    VARCHAR(30) DEFAULT '',
+  cnic            VARCHAR(20) DEFAULT '',
+  address         TEXT,
+  subtotal        DECIMAL(12,2) NOT NULL DEFAULT 0,
+  sales_tax_pct   DECIMAL(5,2) NOT NULL DEFAULT 0,
+  sales_tax_amt   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  gst_pct         DECIMAL(5,2) NOT NULL DEFAULT 0,
+  gst_amt         DECIMAL(12,2) NOT NULL DEFAULT 0,
+  total           DECIMAL(12,2) NOT NULL DEFAULT 0,
+  user_id         INT NOT NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (customer_id) REFERENCES customers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS sale_order_items;
+CREATE TABLE sale_order_items (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  sale_order_id INT NOT NULL,
+  product_id   INT NOT NULL,
+  product_name VARCHAR(150) DEFAULT '',
+  quantity     INT NOT NULL,
+  price        DECIMAL(12,2) NOT NULL,
+  line_total   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  FOREIGN KEY (sale_order_id) REFERENCES sale_orders(id),
   FOREIGN KEY (product_id) REFERENCES products(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -127,4 +177,58 @@ CREATE TABLE returns (
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (product_id) REFERENCES products(id),
   FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- ALTER TABLE queries (run on an existing inventory database to apply changes)
+-- ---------------------------------------------------------------------------
+
+-- Expand customers table with code/contact/route/salesman/ntn/tax/cnic/address
+ALTER TABLE customers
+  ADD COLUMN code           VARCHAR(30)  NOT NULL DEFAULT '' AFTER id,
+  ADD COLUMN contact        VARCHAR(30)  DEFAULT '',
+  ADD COLUMN delivery_route VARCHAR(80)  DEFAULT '',
+  ADD COLUMN salesman       VARCHAR(80)  DEFAULT '',
+  ADD COLUMN ntn_no         VARCHAR(30)  DEFAULT '',
+  ADD COLUMN sales_tax_no   VARCHAR(30)  DEFAULT '',
+  ADD COLUMN cnic           VARCHAR(20)  DEFAULT '',
+  ADD COLUMN address        TEXT;
+
+-- Sale orders
+CREATE TABLE IF NOT EXISTS sale_orders (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  order_no        VARCHAR(50) NOT NULL UNIQUE,
+  order_date      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  customer_id     INT NULL,
+  customer_code   VARCHAR(30) DEFAULT '',
+  customer_name   VARCHAR(120) DEFAULT '',
+  contact         VARCHAR(30) DEFAULT '',
+  delivery_route  VARCHAR(80) DEFAULT '',
+  salesman        VARCHAR(80) DEFAULT '',
+  ntn_no          VARCHAR(30) DEFAULT '',
+  sales_tax_no    VARCHAR(30) DEFAULT '',
+  cnic            VARCHAR(20) DEFAULT '',
+  address         TEXT,
+  subtotal        DECIMAL(12,2) NOT NULL DEFAULT 0,
+  sales_tax_pct   DECIMAL(5,2) NOT NULL DEFAULT 0,
+  sales_tax_amt   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  gst_pct         DECIMAL(5,2) NOT NULL DEFAULT 0,
+  gst_amt         DECIMAL(12,2) NOT NULL DEFAULT 0,
+  total           DECIMAL(12,2) NOT NULL DEFAULT 0,
+  user_id         INT NOT NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (customer_id) REFERENCES customers(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sale_order_items (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  sale_order_id INT NOT NULL,
+  product_id    INT NOT NULL,
+  product_name  VARCHAR(150) DEFAULT '',
+  quantity      INT NOT NULL,
+  price         DECIMAL(12,2) NOT NULL,
+  line_total    DECIMAL(12,2) NOT NULL DEFAULT 0,
+  FOREIGN KEY (sale_order_id) REFERENCES sale_orders(id),
+  FOREIGN KEY (product_id) REFERENCES products(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
