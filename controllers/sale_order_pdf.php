@@ -1,9 +1,11 @@
 <?php
-// Generates a PDF sale order report using FPDF, with the MJ Traders logo.
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_login();
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 $id = (int)($_GET['id'] ?? 0);
 if ($id <= 0) { http_response_code(400); die('Invalid order id.'); }
@@ -13,110 +15,281 @@ $stmt->execute([$id]);
 $order = $stmt->fetch();
 if (!$order) { http_response_code(404); die('Order not found.'); }
 
-$items = $pdo->prepare('SELECT * FROM sale_order_items WHERE sale_order_id = ?');
+$items = $pdo->prepare('
+    SELECT soi.*, p.sku
+    FROM sale_order_items soi
+    LEFT JOIN products p ON p.id = soi.product_id
+    WHERE soi.sale_order_id = ?
+');
 $items->execute([$id]);
 $items = $items->fetchAll();
 
-$config = require __DIR__ . '/../config/app.php';
-$logoPath = __DIR__ . '/../public/assets/mj-traders.png';
+$logoPath = __DIR__ . '/../public/assets/images/mj-logo.png';
+$stampPath = __DIR__ . '/../public/assets/images/mj-traders-stamp.png';
 
-$pdf = new FPDF('P', 'mm', 'A4');
-$pdf->AddPage();
-$pdf->SetAutoPageBreak(true, 15);
-$pdf->SetMargins(15, 15, 15);
+$logoData = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+$stampData = file_exists($stampPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($stampPath)) : '';
 
-$pageW = $pdf->GetPageWidth() - 30;
+$taxPct = (float)$order['sales_tax_pct'];
 
-// Header: logo + company
-if (file_exists($logoPath)) {
-    $pdf->Image($logoPath, 15, 12, 35);
+function e2($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
+function fmt($v) { return number_format((float)$v, 2); }
+
+function spellUnder100(int $n): string {
+    $ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+        'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    if ($n < 20) return $ones[$n];
+    $word = $tens[intdiv($n, 10)];
+    if ($n % 10) $word .= ' ' . $ones[$n % 10];
+    return $word;
 }
-$pdf->SetXY(55, 14);
-$pdf->SetFont('Arial', 'B', 18);
-$pdf->Cell(0, 9, 'MJ Traders', 0, 1);
-$pdf->SetX(55);
-$pdf->SetFont('Arial', '', 10);
-$pdf->Cell(0, 6, 'Inventory & Sales Management', 0, 1);
-$pdf->SetX(55);
-$pdf->Cell(0, 6, 'Sale Order / Tax Invoice', 0, 1);
-$pdf->Ln(4);
 
-// Order meta (right aligned)
-$pdf->SetFont('Arial', 'B', 11);
-$pdf->Cell(0, 7, 'Order No: ' . $order['order_no'], 0, 1, 'R');
-$pdf->SetFont('Arial', '', 10);
-$pdf->Cell(0, 6, 'Date & Time: ' . $order['order_date'], 0, 1, 'R');
-$pdf->Ln(2);
-
-// Divider
-$pdf->SetDrawColor(200);
-$pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());
-$pdf->Ln(4);
-
-// Customer details box
-$pdf->SetFont('Arial', 'B', 11);
-$pdf->Cell(0, 7, 'Customer Details', 0, 1);
-$pdf->SetFont('Arial', '', 10);
-$cust = [
-    'Customer Code' => $order['customer_code'],
-    'Customer Name' => $order['customer_name'],
-    'Contact'       => $order['contact'],
-    'Delivery Route'=> $order['delivery_route'],
-    'Sales Man'     => $order['salesman'],
-    'NTN No'        => $order['ntn_no'],
-    'Sales Tax No'  => $order['sales_tax_no'],
-    'CNIC'          => $order['cnic'],
-    'Address'       => $order['address'],
-];
-$left = array_slice($cust, 0, 5, true);
-$right = array_values(array_slice($cust, 5, null, true));
-$leftKeys = array_keys($left);
-foreach ($leftKeys as $i => $k) {
-    $rKey = $right[$i][0] ?? '';
-    $rVal = $right[$i][1] ?? '';
-    $pdf->Cell(45, 6, $k . ':', 0, 0);
-    $pdf->Cell(60, 6, (string)$left[$k], 0, 0);
-    $pdf->Cell(35, 6, $rKey . ':', 0, 0);
-    $pdf->Cell(0, 6, (string)$rVal, 0, 1);
+function spellUnder1000(int $n): string {
+    if ($n === 0) return '';
+    $hundreds = intdiv($n, 100);
+    $rest = $n % 100;
+    $word = $hundreds ? spellUnder100($hundreds) . ' Hundred' : '';
+    if ($rest) $word .= ($word ? ' ' : '') . spellUnder100($rest);
+    return $word;
 }
-$pdf->Ln(3);
 
-// Items table
-$pdf->SetFont('Arial', 'B', 10);
-$pdf->SetFillColor(240);
-$cols = [['#', 10], ['Product', 80], ['Qty', 20], ['Price', 35], ['Line Total', 40]];
-foreach ($cols as $c) { $pdf->Cell($c[1], 7, $c[0], 1, 0, 'C', true); }
-$pdf->Ln();
-$pdf->SetFont('Arial', '', 10);
+function numberToWords(int $n): string {
+    if ($n === 0) return 'Zero';
+
+    $parts = [];
+    $crore = intdiv($n, 10000000);
+    $n %= 10000000;
+    $lakh = intdiv($n, 100000);
+    $n %= 100000;
+    $thousand = intdiv($n, 1000);
+    $n %= 1000;
+
+    if ($crore) $parts[] = spellUnder1000($crore) . ' Crore';
+    if ($lakh) $parts[] = spellUnder1000($lakh) . ' Lakh';
+    if ($thousand) $parts[] = spellUnder1000($thousand) . ' Thousand';
+    if ($n) $parts[] = spellUnder1000($n);
+
+    return implode(' ', $parts);
+}
+
+function amountInWords(float $amount): string {
+    $rupees = (int) floor(abs($amount));
+    $paisa = (int) round((abs($amount) - $rupees) * 100);
+
+    if ($paisa >= 100) {
+        $rupees += 1;
+        $paisa = 0;
+    }
+
+    $words = numberToWords($rupees) . ' Rupee' . ($rupees === 1 ? '' : 's');
+    if ($paisa > 0) {
+        $words .= ' and ' . numberToWords($paisa) . ' Paisa' . ($paisa === 1 ? '' : '');
+    }
+
+    return $words . ' Only';
+}
+
+function infoRow(string $label, string $value): string {
+    return "
+    <tr>
+        <td style='padding:3px 0;width:88px;color:#000;font-size:11px;vertical-align:top;'>{$label}</td>
+        <td style='padding:3px 0;color:#000;font-size:11px;font-weight:bold;vertical-align:top;'>{$value}</td>
+    </tr>";
+}
+
+$rows = '';
 $i = 1;
 foreach ($items as $it) {
-    $pdf->Cell(10, 7, $i++, 1, 0, 'C');
-    $pdf->Cell(80, 7, $it['product_name'], 1, 0, 'L');
-    $pdf->Cell(20, 7, $it['quantity'], 1, 0, 'C');
-    $pdf->Cell(35, 7, number_format($it['price'], 2), 1, 0, 'R');
-    $pdf->Cell(40, 7, number_format($it['line_total'], 2), 1, 1, 'R');
+    $lineTotal = (float)$it['line_total'];
+    $itemTax = round($lineTotal * $taxPct / 100, 2);
+    $rows .= "
+    <tr>
+        <td style='padding:7px 6px;border-bottom:1px solid #000;text-align:center;font-size:11px;'>{$i}</td>
+        <td style='padding:7px 8px;border-bottom:1px solid #000;font-size:11px;font-weight:bold;'>".e2($it['product_name'])."</td>
+        <td style='padding:7px 6px;border-bottom:1px solid #000;text-align:center;font-size:11px;'>".e2($it['sku'] ?? '-')."</td>
+        <td style='padding:7px 6px;border-bottom:1px solid #000;text-align:center;font-size:11px;'>".$it['quantity']."</td>
+        <td style='padding:7px 8px;border-bottom:1px solid #000;text-align:right;font-size:11px;'>Rs ".fmt($it['price'])."</td>
+        <td style='padding:7px 8px;border-bottom:1px solid #000;text-align:right;font-size:11px;'>Rs ".fmt($itemTax)."</td>
+        <td style='padding:7px 8px;border-bottom:1px solid #000;text-align:right;font-size:11px;font-weight:bold;'>Rs ".fmt($lineTotal)."</td>
+    </tr>";
+    $i++;
 }
 
-// Totals
-$pdf->Ln(2);
-$pdf->SetFont('Arial', '', 10);
-$rightX = 145;
-$pdf->Cell($rightX, 7, 'Subtotal', 0, 0, 'R');
-$pdf->Cell(40, 7, number_format($order['subtotal'], 2), 1, 1, 'R');
+$amountWords = e2(amountInWords((float)$order['total']));
 
-$pdf->Cell($rightX, 7, 'Sales Tax (' . $order['sales_tax_pct'] . '%)', 0, 0, 'R');
-$pdf->Cell(40, 7, number_format($order['sales_tax_amt'], 2), 1, 1, 'R');
+$logoBlock = $logoData
+    ? "<img src='{$logoData}' style='width:150px;height:auto;display:block;' />"
+    : "<div style='width:150px;height:150px;border:1px solid #000;font-size:32px;font-weight:bold;text-align:center;line-height:150px;'>MJ</div>";
 
-$pdf->Cell($rightX, 7, 'GST (' . $order['gst_pct'] . '%)', 0, 0, 'R');
-$pdf->Cell(40, 7, number_format($order['gst_amt'], 2), 1, 1, 'R');
+$stampBlock = '';
+if ($stampData) {
+    $stampBlock = "
+    <table width='100%' cellpadding='0' cellspacing='0' style='margin-top:30px;'>
+        <tr>
+            <td style='width:55%;vertical-align:bottom;padding-right:20px;'>
+                <div style='font-size:10px;color:#000;line-height:1.7;'>
+                    <strong style='font-size:11px;'>Terms &amp; Conditions</strong><br>
+                    Goods once sold will not be taken back.<br>
+                    Payment due as per agreed credit terms.<br>
+                    This is a computer-generated invoice.
+                </div>
+            </td>
+            <td style='width:45%;text-align:center;vertical-align:bottom;'>
+                <img src='{$stampData}' style='width:100px;height:auto;margin-bottom:6px;' />
+                <div style='border-top:1px solid #000;width:170px;margin:0 auto;'></div>
+                <div style='font-size:10px;color:#000;margin-top:5px;font-weight:bold;'>Authorized Signature</div>
+            </td>
+        </tr>
+    </table>";
+}
 
-$pdf->SetFont('Arial', 'B', 11);
-$pdf->Cell($rightX, 8, 'Net Total', 0, 0, 'R');
-$pdf->Cell(40, 8, number_format($order['total'], 2), 1, 1, 'R');
+$html = "
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<style>
+    @page { margin: 24mm 26mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Calibri, sans-serif; color: #000; font-size: 11px; line-height: 1.4; padding: 6mm 4mm; }
+</style>
+</head>
+<body>
 
-$pdf->Ln(10);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(0, 6, 'Generated by MJ Traders Inventory System', 0, 1, 'C');
+<!-- HEADER -->
+<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:14px;'>
+<tr>
+    <td style='width:125px;vertical-align:top;padding-right:16px;'>
+        {$logoBlock}
+    </td>
+    <td style='vertical-align:top;padding-right:12px;'>
+        <div style='font-size:20px;font-weight:bold;color:#000;line-height:1.2;margin-bottom:4px;'>MJ Traders</div>
+        <div style='font-size:11px;color:#000;'>Murree Road, Dhamtor, Abbottabad</div>
+        <div style='font-size:11px;color:#000;'>Tel: 0315-4999667</div>
+        <div style='font-size:10px;color:#000;margin-top:2px;'>Wholesale &amp; Distribution</div>
+    </td>
+    <td style='width:240px;vertical-align:top;text-align:right;'>
+        <div style='font-size:14px;font-weight:bold;color:#000;margin-bottom:10px;'>SALE INVOICE</div>
+        <table cellpadding='0' cellspacing='0' style='margin-left:auto;font-size:11px;'>
+            <tr>
+                <td style='padding:2px 10px 2px 0;text-align:right;color:#000;'>Invoice No:</td>
+                <td style='padding:2px 0;font-weight:bold;color:#000;white-space:nowrap;'>".e2($order['order_no'])."</td>
+            </tr>
+            <tr>
+                <td style='padding:2px 10px 2px 0;text-align:right;color:#000;'>Date:</td>
+                <td style='padding:2px 0;color:#000;white-space:nowrap;'>".e2($order['order_date'])."</td>
+            </tr>
+        </table>
+    </td>
+</tr>
+</table>
+
+<div style='border-top:2px solid #000;margin-bottom:16px;'></div>
+
+<!-- CUSTOMER & TAX -->
+<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:16px;'>
+<tr>
+    <td style='width:48%;vertical-align:top;padding-right:16px;'>
+        <div style='font-size:11px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #000;padding-bottom:4px;'>Bill To</div>
+        <table width='100%' cellpadding='0' cellspacing='0'>
+            ".infoRow('Code', e2($order['customer_code'] ?: '-'))."
+            ".infoRow('Name', e2($order['customer_name'] ?: '-'))."
+            ".infoRow('Contact', e2($order['contact'] ?: '-'))."
+            ".infoRow('Address', e2($order['address'] ?: '-'))."
+        </table>
+    </td>
+    <td style='width:4%;'></td>
+    <td style='width:48%;vertical-align:top;'>
+        <div style='font-size:11px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #000;padding-bottom:4px;'>Tax &amp; Delivery</div>
+        <table width='100%' cellpadding='0' cellspacing='0'>
+            ".infoRow('NTN No', e2($order['ntn_no'] ?: '-'))."
+            ".infoRow('Sales Tax No', e2($order['sales_tax_no'] ?: '-'))."
+            ".infoRow('CNIC', e2($order['cnic'] ?: '-'))."
+            ".infoRow('Route', e2($order['delivery_route'] ?: '-'))."
+            ".infoRow('Salesman', e2($order['salesman'] ?: '-'))."
+        </table>
+    </td>
+</tr>
+</table>
+
+<!-- ITEMS -->
+<table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #000;margin-bottom:14px;'>
+    <thead>
+        <tr>
+            <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:28px;'>#</th>
+            <th style='padding:8px;text-align:left;font-size:10px;font-weight:bold;border-bottom:1px solid #000;'>Item Description</th>
+            <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:72px;'>SKU</th>
+            <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:36px;'>Qty</th>
+            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:78px;'>Unit Price</th>
+            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$taxPct}%)</th>
+            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:82px;'>Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        {$rows}
+    </tbody>
+</table>
+
+<!-- TOTALS -->
+<table width='100%' cellpadding='0' cellspacing='0'>
+<tr>
+    <td style='width:52%;vertical-align:top;padding-right:20px;'>
+        <table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #000;'>
+            <tr>
+                <td style='padding:8px 12px;font-size:10px;font-weight:bold;border-bottom:1px solid #000;'>Amount in Words</td>
+            </tr>
+            <tr>
+                <td style='padding:10px 12px;font-size:11px;line-height:1.5;'>{$amountWords}</td>
+            </tr>
+        </table>
+    </td>
+    <td style='width:48%;vertical-align:top;'>
+        <table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #000;'>
+            <tr>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Subtotal</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;width:100px;'>Rs ".fmt($order['subtotal'])."</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Sales Tax ({$taxPct}%)</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($order['sales_tax_amt'])."</td>
+            </tr>
+            <tr>
+                <td style='padding:10px 12px;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Net Total</td>
+                <td style='padding:10px 12px;text-align:right;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Rs ".fmt($order['total'])."</td>
+            </tr>
+        </table>
+    </td>
+</tr>
+</table>
+
+{$stampBlock}
+
+<!-- FOOTER -->
+<div style='margin-top:28px;border-top:1px solid #000;padding-top:10px;text-align:center;'>
+    <div style='font-size:11px;font-weight:bold;margin-bottom:3px;'>Thank you for your business</div>
+    <div style='font-size:9px;'>MJ Traders Inventory System &mdash; Generated ".date('d M Y, h:i A')."</div>
+</div>
+
+</body>
+</html>";
+
+$options = new Options();
+$options->set('isRemoteEnabled', true);
+$options->set('isHtml5ParserEnabled', true);
+$options->set('defaultFont', 'Calibri');
+$options->set('isFontSubsettingEnabled', true);
+
+$dompdf = new Dompdf($options);
+
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'normal', 'style' => 'normal'], 'C:/Windows/Fonts/calibri.ttf');
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'bold', 'style' => 'normal'], 'C:/Windows/Fonts/calibrib.ttf');
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'normal', 'style' => 'italic'], 'C:/Windows/Fonts/calibrii.ttf');
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'bold', 'style' => 'italic'], 'C:/Windows/Fonts/calibriz.ttf');
+
+$dompdf->loadHtml($html);
+$dompdf->setPaper('A4', 'portrait');
+$dompdf->render();
 
 if (ob_get_length()) ob_clean();
-$pdf->Output('I', 'SaleOrder-' . $order['order_no'] . '.pdf');
+$dompdf->stream('SaleOrder-' . $order['order_no'] . '.pdf', ['Attachment' => false]);

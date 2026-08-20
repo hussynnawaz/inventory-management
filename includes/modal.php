@@ -1,49 +1,39 @@
 <?php
-// Reusable modal markup + modal trigger script.
-// Call modal_markup() once per page (in layout or page), then
-// call show_modal('Title', 'Message') from inline JS to open it.
-
+// Reusable Bootstrap 5 modal
 function modal_markup_html(): string {
     ob_start();
     ?>
-    <div id="appModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
-        <div class="w-full max-w-md rounded-xl bg-white shadow-xl border border-slate-200">
-            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h3 id="appModalTitle" class="font-semibold text-slate-800">Notice</h3>
-                <button type="button" onclick="hideModal()" class="text-slate-400 hover:text-slate-600">&times;</button>
-            </div>
-            <div class="px-5 py-4">
-                <p id="appModalBody" class="text-sm text-slate-600"></p>
-            </div>
-            <div class="px-5 py-3 border-t border-slate-200 text-right">
-                <button type="button" onclick="hideModal()"
-                    class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg">Close</button>
+    <div id="appModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header border-0 pb-0">
+                    <h5 id="appModalTitle" class="modal-title fw-bold">Notice</h5>
+                    <button type="button" class="btn-close" onclick="hideModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="appModalBody" class="text-muted mb-0"></p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light btn-sm px-3" onclick="hideModal()">Close</button>
+                </div>
             </div>
         </div>
     </div>
     <script>
+        var bsModal = null;
         function showModal(title, body, type) {
             document.getElementById('appModalTitle').textContent = title;
-            document.getElementById('appModalBody').textContent = body;
-            var modal = document.getElementById('appModal');
             var titleEl = document.getElementById('appModalTitle');
-            if (type === 'success') { titleEl.className = 'font-semibold text-green-700'; }
-            else if (type === 'error') { titleEl.className = 'font-semibold text-red-700'; }
-            else { titleEl.className = 'font-semibold text-slate-800'; }
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            titleEl.className = 'modal-title fw-bold ' + (type === 'success' ? 'text-success' : type === 'error' ? 'text-danger' : '');
+            document.getElementById('appModalBody').textContent = body;
+            var el = document.getElementById('appModal');
+            if (!bsModal) bsModal = new bootstrap.Modal(el);
+            bsModal.show();
         }
-        function hideModal() {
-            var modal = document.getElementById('appModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
+        function hideModal() { if (bsModal) bsModal.hide(); }
     </script>
     <?php
     return ob_get_clean();
 }
 
-// Print the modal markup directly (for pages that render it inline).
-function modal_markup(): void {
-    echo modal_markup_html();
-}
+function modal_markup(): void { echo modal_markup_html(); }

@@ -2,11 +2,11 @@
     "name": "hussa/awais",
     "authors": [
         {
-            "name": "hussynnawaz",
-            "email": "hussyn.nawaz@gmail.com"
+            "name": "MaryamMunir16",
+            "email": "maryammunir720@gmail.com"
         }
     ],
     "require": {
-        "setasign/fpdf": "1.8.6"
+        "dompdf/dompdf": "^3.1"
     }
 }

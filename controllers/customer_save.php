@@ -12,36 +12,84 @@ function cust_fail(string $msg): void {
     exit;
 }
 
+/**
+ * Generate next sequential customer code: CR-MJ-01, CR-MJ-02, ...
+ */
+function generate_customer_code(PDO $pdo): string {
+    $stmt = $pdo->query("SELECT code FROM customers WHERE code LIKE 'CR-MJ-%' ORDER BY id DESC LIMIT 1");
+    $last = $stmt->fetchColumn();
+    if ($last) {
+        // Extract the numeric part after the last dash
+        preg_match('/CR-MJ-(\d+)$/', $last, $m);
+        $next = $m ? (int)$m[1] + 1 : 1;
+    } else {
+        $next = 1;
+    }
+    return 'CR-MJ-' . str_pad($next, 2, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Get the next code that will be assigned (for display purposes).
+ */
+function get_next_customer_code(PDO $pdo): string {
+    $stmt = $pdo->query("SELECT code FROM customers WHERE code LIKE 'CR-MJ-%' ORDER BY id DESC LIMIT 1");
+    $last = $stmt->fetchColumn();
+    if ($last) {
+        preg_match('/CR-MJ-(\d+)$/', $last, $m);
+        $next = $m ? (int)$m[1] + 1 : 1;
+    } else {
+        $next = 1;
+    }
+    return 'CR-MJ-' . str_pad($next, 2, '0', STR_PAD_LEFT);
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
     $input = $_POST;
 }
 $action = $input['action'] ?? '';
 
-$fields = ['code','name','contact','delivery_route','salesman','ntn_no','sales_tax_no','cnic','address'];
+// Handle get_next_code action
+if ($action === 'get_next_code') {
+    echo json_encode(['success' => true, 'code' => get_next_customer_code($pdo)]);
+    exit;
+}
+
+$fields = ['code','name','contact','delivery_route','ntn_no','sales_tax_no','cnic','address'];
 foreach ($fields as $f) {
     $input[$f] = trim($input[$f] ?? '');
 }
 
 if ($action === 'save') {
-    if ($input['code'] === '') cust_fail('Customer Code is required.');
+    $id = (int)($input['id'] ?? 0);
+
+    // Auto-generate code on new customer
+    if ($id === 0) {
+        $input['code'] = generate_customer_code($pdo);
+    }
+
     if ($input['name'] === '') cust_fail('Customer Name is required.');
 
     // Unique code check (exclude self on edit)
-    $id = (int)($input['id'] ?? 0);
     $chk = $pdo->prepare('SELECT id FROM customers WHERE code = ? AND id <> ?');
     $chk->execute([$input['code'], $id]);
-    if ($chk->fetch()) cust_fail('Customer Code already exists.');
+    if ($chk->fetch()) {
+        // Code collision — regenerate
+        $input['code'] = generate_customer_code($pdo);
+        $chk2 = $pdo->prepare('SELECT id FROM customers WHERE code = ? AND id <> ?');
+        $chk2->execute([$input['code'], $id]);
+        if ($chk2->fetch()) cust_fail('Could not generate unique code. Please try again.');
+    }
 
     try {
         if ($id > 0) {
-            $stmt = $pdo->prepare('UPDATE customers SET code=?, name=?, contact=?, delivery_route=?, salesman=?, ntn_no=?, sales_tax_no=?, cnic=?, address=? WHERE id=?');
-            $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['delivery_route'],$input['salesman'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address'],$id]);
+            $stmt = $pdo->prepare('UPDATE customers SET code=?, name=?, contact=?, delivery_route=?, ntn_no=?, sales_tax_no=?, cnic=?, address=? WHERE id=?');
+            $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['delivery_route'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address'],$id]);
             echo json_encode(['success' => true, 'message' => 'Customer updated successfully.']);
         } else {
             $stmt = $pdo->prepare('INSERT INTO customers (code,name,contact,delivery_route,salesman,ntn_no,sales_tax_no,cnic,address) VALUES (?,?,?,?,?,?,?,?,?)');
             $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['delivery_route'],$input['salesman'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address']]);
-            echo json_encode(['success' => true, 'message' => 'Customer added successfully.']);
+            echo json_encode(['success' => true, 'message' => 'Customer added successfully.', 'code' => $input['code']]);
         }
     } catch (Exception $e) {
         cust_fail('Could not save customer: ' . $e->getMessage());
