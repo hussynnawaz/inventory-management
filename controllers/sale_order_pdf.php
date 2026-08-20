@@ -24,6 +24,15 @@ $items = $pdo->prepare('
 $items->execute([$id]);
 $items = $items->fetchAll();
 
+// Get salesman name from salesmen table
+$salesmanName = $order['salesman'] ?? '';
+if (!empty($order['salesman_id'])) {
+    $smStmt = $pdo->prepare('SELECT name FROM salesmen WHERE id = ?');
+    $smStmt->execute([$order['salesman_id']]);
+    $sm = $smStmt->fetchColumn();
+    if ($sm) $salesmanName = $sm;
+}
+
 $logoPath = __DIR__ . '/../public/assets/images/mj-logo.png';
 $stampPath = __DIR__ . '/../public/assets/images/mj-traders-stamp.png';
 
@@ -201,13 +210,12 @@ $html = "
     </td>
     <td style='width:4%;'></td>
     <td style='width:48%;vertical-align:top;'>
-        <div style='font-size:11px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #000;padding-bottom:4px;'>Tax &amp; Delivery</div>
+        <div style='font-size:11px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #000;padding-bottom:4px;'>Tax Information</div>
         <table width='100%' cellpadding='0' cellspacing='0'>
             ".infoRow('NTN No', e2($order['ntn_no'] ?: '-'))."
             ".infoRow('Sales Tax No', e2($order['sales_tax_no'] ?: '-'))."
             ".infoRow('CNIC', e2($order['cnic'] ?: '-'))."
-            ".infoRow('Route', e2($order['delivery_route'] ?: '-'))."
-            ".infoRow('Salesman', e2($order['salesman'] ?: '-'))."
+            ".infoRow('Salesman', e2($salesmanName ?: '-'))."
         </table>
     </td>
 </tr>

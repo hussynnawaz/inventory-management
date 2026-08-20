@@ -43,7 +43,7 @@ ob_start();
                         <td class="text-muted"><?= e($o['contact']) ?></td>
                         <td class="text-muted"><?= e($o['order_date']) ?></td>
                         <td class="text-end">Rs <?= number_format($o['subtotal'], 2) ?></td>
-                        <td class="text-end">Rs <?= number_format($o['sales_tax_amt'] + $o['gst_amt'], 2) ?></td>
+                        <td class="text-end">Rs <?= number_format($o['sales_tax_amt'], 2) ?></td>
                         <td class="text-end fw-bold">Rs <?= number_format($o['total'], 2) ?></td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">

@@ -65,8 +65,8 @@ ob_start();
                     <input type="hidden" name="id" id="f_id">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">Salesman ID <span class="text-danger">*</span></label>
-                            <input type="text" name="salesman_id" id="f_salesman_id" required class="form-control" placeholder="e.g. SM-001">
+                            <label class="form-label small fw-medium">Salesman ID</label>
+                            <input type="text" id="f_salesman_id" class="form-control bg-light" readonly placeholder="Auto-generated">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-medium">Name <span class="text-danger">*</span></label>
@@ -102,10 +102,11 @@ function openForm(data) {
     document.getElementById('salesmanForm').reset();
     document.getElementById('f_id').value = '';
     document.getElementById('formTitle').textContent = 'Add Salesman';
+    document.getElementById('f_salesman_id').value = '';
     if (data) {
         document.getElementById('formTitle').textContent = 'Edit Salesman';
         document.getElementById('f_id').value = data.id;
-        document.getElementById('f_salesman_id').value = data.salesman_id;
+        document.getElementById('f_salesman_id').value = data.salesman_id || '';
         document.getElementById('f_name').value = data.name;
         document.getElementById('f_phone').value = data.phone || '';
         document.getElementById('f_cnic').value = data.cnic || '';
@@ -118,11 +119,11 @@ function openForm(data) {
 function submitForm() {
     var f = document.getElementById('salesmanForm');
     var data = {
-        action: 'save', id: f.id.value, salesman_id: f.salesman_id.value,
+        action: 'save', id: f.id.value,
         name: f.name.value, phone: f.phone.value, cnic: f.cnic.value, address: f.address.value
     };
-    if (!data.salesman_id.trim() || !data.name.trim()) {
-        showModal('Error', 'Salesman ID and Name are required.', 'error');
+    if (!data.name.trim()) {
+        showModal('Error', 'Name is required.', 'error');
         return;
     }
     fetch('/controllers/salesman_save.php', {

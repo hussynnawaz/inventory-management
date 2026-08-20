@@ -13,7 +13,7 @@ if ($q === '') {
 
 // Search by code, name, or contact
 $stmt = $pdo->prepare('
-    SELECT id, code, name AS customer_name, contact, delivery_route, salesman, ntn_no, sales_tax_no, cnic, address
+    SELECT id, code, name AS customer_name, contact, destination, ntn_no, sales_tax_no, cnic, address
     FROM customers
     WHERE code LIKE ? OR name LIKE ? OR contact LIKE ?
     ORDER BY

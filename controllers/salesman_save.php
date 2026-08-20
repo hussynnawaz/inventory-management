@@ -16,19 +16,35 @@ $action = $input['action'] ?? '';
 
 if ($action === 'save') {
     $id = (int)($input['id'] ?? 0);
-    $salesmanId = trim($input['salesman_id'] ?? '');
     $name = trim($input['name'] ?? '');
     $phone = trim($input['phone'] ?? '');
     $cnic = trim($input['cnic'] ?? '');
     $address = trim($input['address'] ?? '');
 
-    if ($salesmanId === '') fail('Salesman ID is required.');
     if ($name === '') fail('Name is required.');
+
+    // Auto-generate salesman_id: SM-001, SM-002, ...
+    if ($id > 0) {
+        // Editing - keep existing salesman_id
+        $stmt = $pdo->prepare('SELECT salesman_id FROM salesmen WHERE id = ?');
+        $stmt->execute([$id]);
+        $salesmanId = $stmt->fetchColumn() ?: '';
+    } else {
+        // New - generate next SM-XXX
+        $last = $pdo->query("SELECT salesman_id FROM salesmen ORDER BY id DESC LIMIT 1")->fetchColumn();
+        if ($last && preg_match('/^SM-(\d+)$/', $last, $m)) {
+            $next = (int)$m[1] + 1;
+        } else {
+            $count = (int)$pdo->query('SELECT COUNT(*) FROM salesmen')->fetchColumn();
+            $next = $count + 1;
+        }
+        $salesmanId = 'SM-' . str_pad($next, 3, '0', STR_PAD_LEFT);
+    }
 
     try {
         if ($id > 0) {
-            $stmt = $pdo->prepare('UPDATE salesmen SET salesman_id=?, name=?, phone=?, cnic=?, address=? WHERE id=?');
-            $stmt->execute([$salesmanId, $name, $phone, $cnic, $address, $id]);
+            $stmt = $pdo->prepare('UPDATE salesmen SET name=?, phone=?, cnic=?, address=? WHERE id=?');
+            $stmt->execute([$name, $phone, $cnic, $address, $id]);
             echo json_encode(['success' => true, 'message' => 'Salesman updated successfully.']);
         } else {
             $chk = $pdo->prepare('SELECT id FROM salesmen WHERE salesman_id = ?');
@@ -37,7 +53,7 @@ if ($action === 'save') {
 
             $stmt = $pdo->prepare('INSERT INTO salesmen (salesman_id, name, phone, cnic, address) VALUES (?,?,?,?,?)');
             $stmt->execute([$salesmanId, $name, $phone, $cnic, $address]);
-            echo json_encode(['success' => true, 'message' => 'Salesman added successfully.']);
+            echo json_encode(['success' => true, 'message' => 'Salesman added successfully.', 'salesman_id' => $salesmanId]);
         }
     } catch (Exception $e) {
         fail('Could not save salesman: ' . $e->getMessage());

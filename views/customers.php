@@ -8,7 +8,7 @@ require_login();
 $customers = $pdo->query('SELECT * FROM customers ORDER BY id ASC')->fetchAll();
 
 $totalCust = count($customers);
-$routesList = array_unique(array_filter(array_column($customers, 'delivery_route')));
+$routesList = array_unique(array_filter(array_column($customers, 'destination')));
 $totalRoutes = count($routesList);
 
 // Generate next customer code
@@ -44,7 +44,7 @@ ob_start();
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l.84 4.479 9.144-.459L13.89 4zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
                 </div>
                 <div>
-                    <div class="stat-label">Delivery Routes</div>
+                    <div class="stat-label">Destinations</div>
                     <div class="stat-value"><?= $totalRoutes ?></div>
                 </div>
             </div>
@@ -62,13 +62,13 @@ ob_start();
                         <label class="form-label small fw-medium">Search</label>
                         <div class="input-group">
                             <span class="input-group-text bg-white border-end-0"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></span>
-                            <input type="text" id="custSearch" oninput="applyFilters()" placeholder="Search code, name, contact or route..." class="form-control border-start-0">
+                            <input type="text" id="custSearch" oninput="applyFilters()" placeholder="Search code, name, contact or destination..." class="form-control border-start-0">
                         </div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-medium">Route</label>
                         <select id="routeFilter" onchange="applyFilters()" class="form-select">
-                            <option value="">All Routes</option>
+                            <option value="">All Destinations</option>
                             <?php foreach ($routesList as $route): ?>
                                 <option value="<?= e($route) ?>"><?= e($route) ?></option>
                             <?php endforeach; ?>
@@ -95,7 +95,7 @@ ob_start();
                     <th>Code</th>
                     <th>Customer Name</th>
                     <th>Contact</th>
-                    <th>Route</th>
+                    <th>Destination</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -134,8 +134,8 @@ ob_start();
                             <input type="text" name="contact" id="f_contact" autocomplete="off" class="form-control">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">Delivery Route</label>
-                            <input type="text" name="delivery_route" id="f_delivery_route" autocomplete="off" class="form-control">
+                            <label class="form-label small fw-medium">Destination</label>
+                            <input type="text" name="destination" id="f_delivery_route" autocomplete="off" class="form-control">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-medium">NTN No</label>
@@ -187,7 +187,7 @@ function openForm(id) {
             document.getElementById('f_code').value = c.code;
             document.getElementById('f_name').value = c.name;
             document.getElementById('f_contact').value = c.contact;
-            document.getElementById('f_delivery_route').value = c.delivery_route;
+            document.getElementById('f_delivery_route').value = c.destination;
             document.getElementById('f_ntn_no').value = c.ntn_no;
             document.getElementById('f_sales_tax_no').value = c.sales_tax_no;
             document.getElementById('f_cnic').value = c.cnic;
@@ -216,7 +216,7 @@ function renderTable(list) {
             '<td><span class="font-monospace fw-semibold">' + esc(c.code) + '</span></td>' +
             '<td class="fw-medium">' + esc(c.name) + '</td>' +
             '<td class="text-muted">' + (esc(c.contact) || '<span class="text-muted">-</span>') + '</td>' +
-            '<td class="text-muted">' + (esc(c.delivery_route) || '<span class="text-muted">-</span>') + '</td>' +
+            '<td class="text-muted">' + (esc(c.destination) || '<span class="text-muted">-</span>') + '</td>' +
             '<td class="text-end">' +
                 '<button onclick="openForm(' + c.id + ')" class="btn btn-sm btn-outline-primary me-1">Edit</button>' +
                 '<button onclick="doDelete(' + c.id + ', \'' + escQ(c.name) + '\')" class="btn btn-sm btn-outline-danger">Delete</button>' +
@@ -229,8 +229,8 @@ function applyFilters() {
     const q = document.getElementById('custSearch').value.toLowerCase().trim();
     const route = document.getElementById('routeFilter').value;
     renderTable(CUSTOMERS.filter(c => {
-        if (route && c.delivery_route !== route) return false;
-        if (q && ![c.code, c.name, c.contact, c.delivery_route].join(' ').toLowerCase().includes(q)) return false;
+        if (route && c.destination !== route) return false;
+        if (q && ![c.code, c.name, c.contact, c.destination].join(' ').toLowerCase().includes(q)) return false;
         return true;
     }));
 }
@@ -239,7 +239,7 @@ function submitForm() {
     const f = document.getElementById('customerForm');
     const data = {
         action: 'save', id: f.id.value, code: f.code.value, name: f.name.value,
-        contact: f.contact.value, delivery_route: f.delivery_route.value,
+        contact: f.contact.value, destination: f.destination.value,
         ntn_no: f.ntn_no.value, sales_tax_no: f.sales_tax_no.value, cnic: f.cnic.value, address: f.address.value
     };
     if (!data.name.trim()) { showModal('Validation Error', 'Customer Name is required.', 'error'); return; }

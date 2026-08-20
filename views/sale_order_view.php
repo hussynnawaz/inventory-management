@@ -103,12 +103,21 @@ ob_start();
                     <div><?= e($order['contact'] ?: '-') ?></div>
                 </div>
                 <div class="mb-2">
-                    <small class="text-muted">Route</small>
-                    <div><?= e($order['delivery_route'] ?: '-') ?></div>
+                    <small class="text-muted">Destination</small>
+                    <div><?= e($order['destination'] ?: '-') ?></div>
                 </div>
                 <div class="mb-2">
                     <small class="text-muted">Salesman</small>
-                    <div><?= e($order['salesman'] ?: '-') ?></div>
+                    <div><?php
+                        $smName = $order['salesman'] ?? '';
+                        if (!empty($order['salesman_id'])) {
+                            $smStmt = $pdo->prepare('SELECT name FROM salesmen WHERE id = ?');
+                            $smStmt->execute([$order['salesman_id']]);
+                            $sm = $smStmt->fetchColumn();
+                            if ($sm) $smName = $sm;
+                        }
+                        echo e($smName ?: '-');
+                    ?></div>
                 </div>
                 <div class="mb-0">
                     <small class="text-muted">Address</small>
@@ -125,13 +134,9 @@ ob_start();
                     <span class="text-muted">Subtotal</span>
                     <span class="fw-semibold">Rs <?= number_format($order['subtotal'], 2) ?></span>
                 </div>
-                <div class="d-flex justify-content-between small mb-2">
+                <div class="d-flex justify-content-between small mb-3">
                     <span class="text-muted">Sales Tax (<?= $order['sales_tax_pct'] ?>%)</span>
                     <span class="fw-semibold">Rs <?= number_format($order['sales_tax_amt'], 2) ?></span>
-                </div>
-                <div class="d-flex justify-content-between small mb-3">
-                    <span class="text-muted">GST (<?= $order['gst_pct'] ?>%)</span>
-                    <span class="fw-semibold">Rs <?= number_format($order['gst_amt'], 2) ?></span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between">

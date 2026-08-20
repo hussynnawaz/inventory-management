@@ -55,7 +55,7 @@ if ($action === 'get_next_code') {
     exit;
 }
 
-$fields = ['code','name','contact','delivery_route','ntn_no','sales_tax_no','cnic','address'];
+$fields = ['code','name','contact','destination','ntn_no','sales_tax_no','cnic','address'];
 foreach ($fields as $f) {
     $input[$f] = trim($input[$f] ?? '');
 }
@@ -83,12 +83,12 @@ if ($action === 'save') {
 
     try {
         if ($id > 0) {
-            $stmt = $pdo->prepare('UPDATE customers SET code=?, name=?, contact=?, delivery_route=?, ntn_no=?, sales_tax_no=?, cnic=?, address=? WHERE id=?');
-            $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['delivery_route'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address'],$id]);
+            $stmt = $pdo->prepare('UPDATE customers SET code=?, name=?, contact=?, destination=?, ntn_no=?, sales_tax_no=?, cnic=?, address=? WHERE id=?');
+            $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['destination'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address'],$id]);
             echo json_encode(['success' => true, 'message' => 'Customer updated successfully.']);
         } else {
-            $stmt = $pdo->prepare('INSERT INTO customers (code,name,contact,delivery_route,salesman,ntn_no,sales_tax_no,cnic,address) VALUES (?,?,?,?,?,?,?,?,?)');
-            $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['delivery_route'],$input['salesman'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address']]);
+            $stmt = $pdo->prepare('INSERT INTO customers (code,name,contact,destination,ntn_no,sales_tax_no,cnic,address) VALUES (?,?,?,?,?,?,?,?)');
+            $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['destination'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address']]);
             echo json_encode(['success' => true, 'message' => 'Customer added successfully.', 'code' => $input['code']]);
         }
     } catch (Exception $e) {
