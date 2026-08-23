@@ -33,11 +33,73 @@ if (!empty($order['salesman_id'])) {
     if ($sm) $salesmanName = $sm;
 }
 
-$logoPath = __DIR__ . '/../public/assets/images/mj-logo.png';
-$stampPath = __DIR__ . '/../public/assets/images/mj-traders-stamp.png';
+// --- PDF Cache Setup ---
+$cacheDir = __DIR__ . '/../cache/pdfs';
+if (!is_dir($cacheDir)) { mkdir($cacheDir, 0755, true); }
+$cacheFile = $cacheDir . '/sale_order_' . $id . '.pdf';
 
-$logoData = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
-$stampData = file_exists($stampPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($stampPath)) : '';
+// Serve from cache if it exists and order hasn't been modified since generation
+if (file_exists($cacheFile)) {
+    $cachedAt = filemtime($cacheFile);
+    $modifiedAt = strtotime($order['updated_at'] ?? $order['created_at'] ?? 'now');
+    if ($cachedAt >= $modifiedAt) {
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . filesize($cacheFile));
+        readfile($cacheFile);
+        exit;
+    }
+}
+
+/**
+ * Resize high-resolution PNG images for fast embedding in Dompdf.
+ */
+function getOptimizedImagePath(string $path, int $targetWidth = 300): string {
+    $realPath = realpath($path);
+    if (!$realPath || !file_exists($realPath)) {
+        return '';
+    }
+
+    $cacheImgDir = __DIR__ . '/../cache/images';
+    if (!is_dir($cacheImgDir)) {
+        mkdir($cacheImgDir, 0755, true);
+    }
+
+    $filename = pathinfo($realPath, PATHINFO_FILENAME);
+    $ext = strtolower(pathinfo($realPath, PATHINFO_EXTENSION));
+    $cacheFile = $cacheImgDir . '/' . $filename . '_' . $targetWidth . '.' . $ext;
+
+    if (file_exists($cacheFile) && filemtime($cacheFile) >= filemtime($realPath)) {
+        return $cacheFile;
+    }
+
+    if ($ext === 'png' && function_exists('imagecreatefrompng')) {
+        $info = @getimagesize($realPath);
+        if ($info && $info[0] > 0) {
+            $w = $info[0];
+            $h = $info[1];
+            if ($w <= $targetWidth) {
+                return $realPath;
+            }
+            $targetHeight = (int)round($targetWidth * $h / $w);
+            $srcImg = @imagecreatefrompng($realPath);
+            if ($srcImg) {
+                $dstImg = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($dstImg, false);
+                imagesavealpha($dstImg, true);
+                imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $w, $h);
+                imagepng($dstImg, $cacheFile, 7);
+                imagedestroy($srcImg);
+                imagedestroy($dstImg);
+                return $cacheFile;
+            }
+        }
+    }
+
+    return $realPath;
+}
+
+$logoPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-logo.png', 300);
+$stampPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-traders-stamp.png', 200);
 
 $taxPct = (float)$order['sales_tax_pct'];
 
@@ -127,12 +189,12 @@ foreach ($items as $it) {
 
 $amountWords = e2(amountInWords((float)$order['total']));
 
-$logoBlock = $logoData
-    ? "<img src='{$logoData}' style='width:150px;height:auto;display:block;' />"
+$logoBlock = $logoPath
+    ? "<img src='{$logoPath}' style='width:150px;height:auto;display:block;' />"
     : "<div style='width:150px;height:150px;border:1px solid #000;font-size:32px;font-weight:bold;text-align:center;line-height:150px;'>MJ</div>";
 
 $stampBlock = '';
-if ($stampData) {
+if ($stampPath) {
     $stampBlock = "
     <table width='100%' cellpadding='0' cellspacing='0' style='margin-top:30px;'>
         <tr>
@@ -145,7 +207,7 @@ if ($stampData) {
                 </div>
             </td>
             <td style='width:45%;text-align:center;vertical-align:bottom;'>
-                <img src='{$stampData}' style='width:100px;height:auto;margin-bottom:6px;' />
+                <img src='{$stampPath}' style='width:100px;height:auto;margin-bottom:6px;' />
                 <div style='border-top:1px solid #000;width:170px;margin:0 auto;'></div>
                 <div style='font-size:10px;color:#000;margin-top:5px;font-weight:bold;'>Authorized Signature</div>
             </td>
@@ -161,7 +223,7 @@ $html = "
 <style>
     @page { margin: 24mm 26mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Calibri, sans-serif; color: #000; font-size: 11px; line-height: 1.4; padding: 6mm 4mm; }
+    body { font-family: Helvetica, Arial, sans-serif; color: #000; font-size: 11px; line-height: 1.4; padding: 6mm 4mm; }
 </style>
 </head>
 <body>
@@ -285,19 +347,20 @@ $html = "
 $options = new Options();
 $options->set('isRemoteEnabled', true);
 $options->set('isHtml5ParserEnabled', true);
-$options->set('defaultFont', 'Calibri');
-$options->set('isFontSubsettingEnabled', true);
+$options->set('defaultFont', 'Helvetica');
+$options->set('chroot', [realpath(__DIR__ . '/../')]);
 
 $dompdf = new Dompdf($options);
-
-$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'normal', 'style' => 'normal'], 'C:/Windows/Fonts/calibri.ttf');
-$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'bold', 'style' => 'normal'], 'C:/Windows/Fonts/calibrib.ttf');
-$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'normal', 'style' => 'italic'], 'C:/Windows/Fonts/calibrii.ttf');
-$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'bold', 'style' => 'italic'], 'C:/Windows/Fonts/calibriz.ttf');
-
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
+$pdfContent = $dompdf->output();
+file_put_contents($cacheFile, $pdfContent);
+
 if (ob_get_length()) ob_clean();
-$dompdf->stream('SaleOrder-' . $order['order_no'] . '.pdf', ['Attachment' => false]);
+header('Content-Type: application/pdf');
+header('Content-Length: ' . strlen($pdfContent));
+echo $pdfContent;
+
+
