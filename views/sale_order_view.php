@@ -25,7 +25,7 @@ ob_start();
 ?>
 <div class="mb-4">
     <a href="/views/sales.php" class="btn btn-sm btn-outline-secondary">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/></svg>
+        <?= icon('arrow-left', 14) ?>
         Back to Sales
     </a>
 </div>
@@ -41,7 +41,7 @@ ob_start();
                         <small class="text-muted"><?= e($order['order_date']) ?></small>
                     </div>
                     <a href="/controllers/sale_order_pdf.php?id=<?= $order['id'] ?>" target="_blank" class="btn btn-danger btn-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/><path d="M4.603 14.087a.8.8 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.7 7.7 0 0 1 1.482-.645 20 20 0 0 1 1.062.202c.331.143.69.272 1.054.368.364.096.745.17 1.136.217.404.046.826.065 1.264.065h.02c.439 0 .862-.02 1.277-.065a8 8 0 0 0 1.147-.218c.37-.097.731-.226 1.062-.368.331-.143.594-.273.794-.472a.8.8 0 0 1 .438.42c.156.307.11.675-.08 1.02l-.068.114c-.28.493-.772.908-1.347 1.182a6.8 6.8 0 0 1-1.563.405c-.358.06-.727.085-1.102.085h-.018c-.387 0-.76-.026-1.122-.085a7 7 0 0 1-1.58-.42c-.58-.28-1.07-.695-1.352-1.19l-.072-.116a.8.8 0 0 1 .08-1.02z"/></svg>
+                        <?= icon('file-earmark-text', 14, 'me-1') ?>
                         Download PDF
                     </a>
                 </div>
@@ -55,17 +55,19 @@ ob_start();
                                 <th class="small fw-semibold">SKU</th>
                                 <th class="small fw-semibold text-center">Qty</th>
                                 <th class="small fw-semibold text-end">Unit Price</th>
-                                <th class="small fw-semibold text-end">Tax</th>
+                                <th class="small fw-semibold text-end">Tax (<?= $totalTaxPct ?>%)</th>
                                 <th class="small fw-semibold text-end">Line Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
                             $taxPct = (float)$order['sales_tax_pct'];
+                            $advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
+                            $totalTaxPct = $taxPct + $advTaxPct;
                             $i = 1;
                             foreach ($items as $it):
                                 $lineTotal = (float)$it['line_total'];
-                                $itemTax = round($lineTotal * $taxPct / 100, 2);
+                                $itemTax = round($lineTotal * $totalTaxPct / 100, 2);
                             ?>
                             <tr>
                                 <td><?= $i++ ?></td>
@@ -134,9 +136,13 @@ ob_start();
                     <span class="text-muted">Subtotal</span>
                     <span class="fw-semibold">Rs <?= number_format($order['subtotal'], 2) ?></span>
                 </div>
-                <div class="d-flex justify-content-between small mb-3">
+                <div class="d-flex justify-content-between small mb-2">
                     <span class="text-muted">Sales Tax (<?= $order['sales_tax_pct'] ?>%)</span>
                     <span class="fw-semibold">Rs <?= number_format($order['sales_tax_amt'], 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between small mb-3">
+                    <span class="text-muted">Advanced Tax (<?= $order['advanced_tax_pct'] ?? '0' ?>%)</span>
+                    <span class="fw-semibold">Rs <?= number_format($order['advanced_tax_amt'] ?? 0, 2) ?></span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between">

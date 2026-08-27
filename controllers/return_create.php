@@ -55,7 +55,7 @@ try {
         $itemStmt->execute([$retNo, $saleOrderId, $pid, $qty, $refundPrice, $lineTotal, $reason, current_user()['id']]);
         $updateProdStmt->execute([$qty, $pid]);
 
-        $savedReturns[] = $retNo;
+        $savedReturns[] = ['return_no' => $retNo, 'id' => (int)$pdo->lastInsertId()];
     }
 
     $pdo->commit();

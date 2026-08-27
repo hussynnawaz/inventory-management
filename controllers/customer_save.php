@@ -89,7 +89,7 @@ if ($action === 'save') {
         } else {
             $stmt = $pdo->prepare('INSERT INTO customers (code,name,contact,destination,ntn_no,sales_tax_no,cnic,address) VALUES (?,?,?,?,?,?,?,?)');
             $stmt->execute([$input['code'],$input['name'],$input['contact'],$input['destination'],$input['ntn_no'],$input['sales_tax_no'],$input['cnic'],$input['address']]);
-            echo json_encode(['success' => true, 'message' => 'Customer added successfully.', 'code' => $input['code']]);
+            echo json_encode(['success' => true, 'message' => 'Customer added successfully.', 'code' => $input['code'], 'id' => (int)$pdo->lastInsertId()]);
         }
     } catch (Exception $e) {
         cust_fail('Could not save customer: ' . $e->getMessage());

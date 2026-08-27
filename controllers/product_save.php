@@ -12,6 +12,33 @@ function fail(string $msg): void {
     exit;
 }
 
+/**
+ * Generate SKU from product name: MJ-{INITIALS}-{NUMBER}
+ * "Nestle Mineral Water" → "MJ-NMW-01"
+ */
+function generate_sku(PDO $pdo, string $name): string {
+    $stopWords = ['a','an','the','and','or','of','for','in','on','at','to','by','with','from'];
+    $words = preg_split('/[\s\-_]+/', trim($name));
+    $initials = '';
+    foreach ($words as $w) {
+        $w = strtolower($w);
+        if (in_array($w, $stopWords, true) || $w === '') continue;
+        $initials .= strtoupper($w[0]);
+        if (strlen($initials) >= 3) break;
+    }
+    if (strlen($initials) < 1) $initials = 'PRD';
+    $prefix = 'MJ-' . $initials . '-';
+    $stmt = $pdo->prepare("SELECT sku FROM products WHERE sku LIKE ? ORDER BY id DESC LIMIT 1");
+    $stmt->execute([$prefix . '%']);
+    $last = $stmt->fetchColumn();
+    if ($last && preg_match('/-(\d+)$/', $last, $m)) {
+        $next = (int)$m[1] + 1;
+    } else {
+        $next = 1;
+    }
+    return $prefix . str_pad($next, 2, '0', STR_PAD_LEFT);
+}
+
 $input = json_decode(file_get_contents('php://input'), true);
 if (!is_array($input)) {
     $input = $_POST;
@@ -30,15 +57,24 @@ if ($action === 'save') {
     $quantity  = (int)($input['quantity'] ?? 0);
 
     if ($name === '') fail('Product Name is required.');
-    if ($sku === '')  fail('SKU is required.');
     if ($costPrice < 0) fail('Purchase Price cannot be negative.');
     if ($salePrice < 0) fail('Selling Price cannot be negative.');
     if ($quantity < 0)  fail('Initial Stock cannot be negative.');
 
-    // Unique SKU check (exclude self on edit)
+    // Auto-generate SKU on new product, or on edit if SKU was cleared
+    if ($id === 0 || $sku === '') {
+        $sku = generate_sku($pdo, $name);
+    }
+
+    // Unique SKU check (regenerate if collision on new product)
     $chk = $pdo->prepare('SELECT id FROM products WHERE sku = ? AND id <> ?');
     $chk->execute([$sku, $id]);
-    if ($chk->fetch()) fail('SKU already exists.');
+    if ($chk->fetch()) {
+        $sku = generate_sku($pdo, $name);
+        $chk2 = $pdo->prepare('SELECT id FROM products WHERE sku = ? AND id <> ?');
+        $chk2->execute([$sku, $id]);
+        if ($chk2->fetch()) fail('Could not generate unique SKU. Please try again.');
+    }
 
     try {
         if ($id > 0) {
@@ -48,7 +84,7 @@ if ($action === 'save') {
         } else {
             $stmt = $pdo->prepare('INSERT INTO products (name, sku, category, description, cost_price, sale_price, quantity) VALUES (?,?,?,?,?,?,?)');
             $stmt->execute([$name, $sku, $category, $desc, $costPrice, $salePrice, $quantity]);
-            echo json_encode(['success' => true, 'message' => 'Product added successfully.']);
+            echo json_encode(['success' => true, 'message' => 'Product added successfully.', 'product_id' => (int)$pdo->lastInsertId()]);
         }
     } catch (Exception $e) {
         fail('Could not save product: ' . $e->getMessage());

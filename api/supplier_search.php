@@ -7,18 +7,18 @@ header('Content-Type: application/json');
 $q = trim($_GET['q'] ?? '');
 
 if ($q === '') {
-    $stmt = $pdo->query('SELECT id, name, phone, email FROM suppliers ORDER BY name ASC LIMIT 10');
+    $stmt = $pdo->query('SELECT id, code, name, company_name, contact, phone, email FROM suppliers ORDER BY name ASC LIMIT 10');
     echo json_encode($stmt->fetchAll());
     exit;
 }
 
 $stmt = $pdo->prepare('
-    SELECT id, name, phone, email
+    SELECT id, code, name, company_name, contact, phone, email
     FROM suppliers
-    WHERE name LIKE ? OR phone LIKE ?
+    WHERE name LIKE ? OR code LIKE ? OR company_name LIKE ? OR contact LIKE ? OR phone LIKE ?
     ORDER BY name ASC
     LIMIT 10
 ');
 $like = "%{$q}%";
-$stmt->execute([$like, $like]);
+$stmt->execute([$like, $like, $like, $like, $like]);
 echo json_encode($stmt->fetchAll());

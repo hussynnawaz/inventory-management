@@ -19,7 +19,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4M4 7l8 4M4 7v10l8 4m0-10v10"/></svg>
+                    <?= icon('boxes', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Products</div>
@@ -32,7 +32,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <?= icon('currency-dollar', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Sales</div>
@@ -45,7 +45,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    <?= icon('cart', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Purchases</div>
@@ -58,7 +58,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fee2e2;color:#991b1b;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    <?= icon('exclamation-triangle', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Low Stock Items</div>
@@ -97,7 +97,7 @@ ob_start();
                         <td class="text-end fw-semibold">Rs <?= number_format($o['total'], 2) ?></td>
                         <td class="text-center">
                             <a href="/controllers/sale_order_pdf.php?id=<?= $o['id'] ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Download PDF">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                <?= icon('file-earmark-text', 14) ?>
                             </a>
                         </td>
                     </tr>

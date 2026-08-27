@@ -20,7 +20,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M7.752.066a.5.5 0 0 1 .496 0l3.75 2.143a.5.5 0 0 1 .252.434v3.995l3.498 2A.5.5 0 0 1 16 9.07v4.512a.5.5 0 0 1-.252.434l-3.75 2.143a.5.5 0 0 1-.496 0l-3.502-2-3.502 2.001a.5.5 0 0 1-.496 0l-3.75-2.143A.5.5 0 0 1 0 13.581V9.07a.5.5 0 0 1 .252-.434L3.75 6.638V2.643a.5.5 0 0 1 .252-.434zM4.25 7.504 1.508 9.071l2.742 1.567 2.742-1.567zM7.5 9.933l-2.75 1.571v3.134l2.75-1.571zm1 3.134 2.75 1.571v-3.134L8.5 9.933zm.508-3.636 2.742 1.567 2.742-1.567-2.742-1.567zm1.248-1.433V5.987l-2.75 1.571v2.01zM7.5 7.557v-2.01L4.75 3.976v2.01zM5.258 3.362l2.742 1.567 2.742-1.567L8 1.795zM15 9.933l-2.75 1.571v3.134L15 13.067zm-10.75 4.705v-3.134L1.5 9.933v3.134z"/></svg>
+                    <?= icon('boxes', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Products</div>
@@ -33,7 +33,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h13A1.5 1.5 0 0 1 16 3.5v2A1.5 1.5 0 0 1 14.5 7H9v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7H1.5A1.5 1.5 0 0 1 0 5.5zM6.854 10.146a.5.5 0 1 0-.708.708L7.293 12l-1.147 1.146a.5.5 0 0 0 .708.708L8 12.707l1.146 1.147a.5.5 0 0 0 .708-.708L8.707 12l1.147-1.146a.5.5 0 0 0-.708-.708L8 11.293z"/></svg>
+                    <?= icon('bag', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Stock Units</div>
@@ -46,7 +46,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fee2e2;color:#991b1b;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16M7 6.5v3a.5.5 0 0 0 1 0v-3a.5.5 0 0 0-1 0M8 11a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+                    <?= icon('info-circle', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Low Stock (≤5)</div>
@@ -59,7 +59,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.05zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73l.348.086z"/></svg>
+                    <?= icon('currency-dollar', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Inventory Value</div>
@@ -77,13 +77,13 @@ ob_start();
             <div class="col-md-8">
                 <label class="form-label small fw-medium">Search Products</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></span>
+                    <span class="input-group-text bg-white border-end-0"><?= icon('search', 14) ?></span>
                     <input type="text" id="prodSearch" oninput="applyFilters()" placeholder="Search name, SKU, category..." class="form-control border-start-0">
                 </div>
             </div>
             <div class="col-md-4 text-md-end">
                 <button type="button" onclick="openForm()" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
+                    <?= icon('plus', 14, 'me-1') ?>
                     Add Product
                 </button>
             </div>
@@ -110,7 +110,7 @@ ob_start();
         </table>
     </div>
     <div id="emptyState" class="text-center py-5 d-none">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="text-muted mb-2" viewBox="0 0 16 16"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h13A1.5 1.5 0 0 1 16 3.5v2A1.5 1.5 0 0 1 14.5 7H9v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7H1.5A1.5 1.5 0 0 1 0 5.5zM6.854 10.146a.5.5 0 1 0-.708.708L7.293 12l-1.147 1.146a.5.5 0 0 0 .708.708L8 12.707l1.146 1.147a.5.5 0 0 0 .708-.708L8.707 12l1.147-1.146a.5.5 0 0 0-.708-.708L8 11.293z"/></svg>
+        <?= icon('bag', 40, 'text-muted mb-2') ?>
         <p class="text-muted small mb-1">No products found</p>
         <p class="text-muted" style="font-size:.75rem">Add your first product to get started.</p>
     </div>
@@ -133,8 +133,8 @@ ob_start();
                             <input type="text" name="name" id="p_name" autocomplete="off" required class="form-control" placeholder="e.g. Widget A">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">SKU <span class="text-danger">*</span></label>
-                            <input type="text" name="sku" id="p_sku" autocomplete="off" required class="form-control font-monospace" placeholder="e.g. WDG-001">
+                            <label class="form-label small fw-medium">SKU <span class="text-muted">(auto-generated)</span></label>
+                            <input type="text" name="sku" id="p_sku" readonly class="form-control font-monospace bg-light text-muted" placeholder="Auto-generated on save">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-medium">Category</label>
@@ -222,6 +222,8 @@ function openForm(id) {
     document.getElementById('productForm').reset();
     document.getElementById('p_id').value = '';
     document.getElementById('productModalTitle').textContent = 'Add Product';
+    document.getElementById('p_sku').value = '';
+    document.getElementById('p_sku').setAttribute('placeholder', 'Auto-generated on save');
     if (id) {
         const p = PRODUCTS.find(x => x.id == id);
         if (p) {
@@ -312,7 +314,6 @@ function submitProduct() {
         quantity: f.quantity.value
     };
     if (!data.name.trim()) { showModal('Validation Error', 'Product Name is required.', 'error'); return; }
-    if (!data.sku.trim()) { showModal('Validation Error', 'SKU is required.', 'error'); return; }
     fetch('/controllers/product_save.php', {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
     })
@@ -346,17 +347,19 @@ function submitStock() {
 }
 
 function doDelete(id, name) {
-    if (!confirm('Delete product "' + name + '"? This cannot be undone.')) return;
-    fetch('/controllers/product_save.php', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action: 'delete', id: id })
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
-        else { showModal('Error', d.message, 'error'); }
-    })
-    .catch(() => showModal('Error', 'Delete failed.', 'error'));
+    confirmModal('Delete Product', 'Delete product "' + name + '"? This cannot be undone.', 'Delete').then(ok => {
+        if (!ok) return;
+        fetch('/controllers/product_save.php', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'delete', id: id })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
+            else { showModal('Error', d.message, 'error'); }
+        })
+        .catch(() => showModal('Error', 'Delete failed.', 'error'));
+    });
 }
 
 renderTable(PRODUCTS);

@@ -102,6 +102,8 @@ $logoPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-logo.pn
 $stampPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-traders-stamp.png', 200);
 
 $taxPct = (float)$order['sales_tax_pct'];
+$advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
+$totalTaxPct = $taxPct + $advTaxPct;
 
 function e2($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 function fmt($v) { return number_format((float)$v, 2); }
@@ -173,7 +175,7 @@ $rows = '';
 $i = 1;
 foreach ($items as $it) {
     $lineTotal = (float)$it['line_total'];
-    $itemTax = round($lineTotal * $taxPct / 100, 2);
+    $itemTax = round($lineTotal * $totalTaxPct / 100, 2);
     $rows .= "
     <tr>
         <td style='padding:7px 6px;border-bottom:1px solid #000;text-align:center;font-size:11px;'>{$i}</td>
@@ -292,7 +294,7 @@ $html = "
             <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:72px;'>SKU</th>
             <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:36px;'>Qty</th>
             <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:78px;'>Unit Price</th>
-            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$taxPct}%)</th>
+            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$totalTaxPct}%)</th>
             <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:82px;'>Amount</th>
         </tr>
     </thead>
@@ -323,6 +325,10 @@ $html = "
             <tr>
                 <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Sales Tax ({$taxPct}%)</td>
                 <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($order['sales_tax_amt'])."</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Advanced Tax ({$advTaxPct}%)</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($order['advanced_tax_amt'] ?? 0)."</td>
             </tr>
             <tr>
                 <td style='padding:10px 12px;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Net Total</td>

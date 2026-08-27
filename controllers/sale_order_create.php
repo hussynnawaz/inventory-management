@@ -73,7 +73,9 @@ foreach ($items as $it) {
 
 $salesTaxPct = (float)($input['sales_tax_pct'] ?? 0);
 $salesTaxAmt = round($subtotal * $salesTaxPct / 100, 2);
-$total = round($subtotal + $salesTaxAmt, 2);
+$advancedTaxPct = (float)($input['advanced_tax_pct'] ?? 0);
+$advancedTaxAmt = round($subtotal * $advancedTaxPct / 100, 2);
+$total = round($subtotal + $salesTaxAmt + $advancedTaxAmt, 2);
 
 try {
     $pdo->beginTransaction();
@@ -81,8 +83,8 @@ try {
     $stmt = $pdo->prepare('INSERT INTO sale_orders
         (order_no, order_date, customer_id, customer_code, customer_name, contact, destination,
          salesman, salesman_id, ntn_no, sales_tax_no, cnic, address, subtotal,
-         sales_tax_pct, sales_tax_amt, total, user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+         sales_tax_pct, sales_tax_amt, advanced_tax_pct, advanced_tax_amt, total, user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $stmt->execute([
         $orderNo, $orderDate, $customerId, $customerCode,
         trim($input['customer_name'] ?? ''), trim($input['contact'] ?? ''),
@@ -90,7 +92,7 @@ try {
         $salesmanName, $salesmanId,
         trim($input['ntn_no'] ?? ''), trim($input['sales_tax_no'] ?? ''),
         trim($input['cnic'] ?? ''), trim($input['address'] ?? ''),
-        $subtotal, $salesTaxPct, $salesTaxAmt, $total, current_user()['id'],
+        $subtotal, $salesTaxPct, $salesTaxAmt, $advancedTaxPct, $advancedTaxAmt, $total, current_user()['id'],
     ]);
     $orderId = $pdo->lastInsertId();
 

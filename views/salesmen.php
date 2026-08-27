@@ -13,7 +13,7 @@ ob_start();
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted small mb-0">Manage your salesmen. Total: <strong><?= $totalSalesmen ?></strong></p>
     <button type="button" onclick="openForm()" class="btn btn-primary btn-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
+        <?= icon('plus', 14, 'me-1') ?>
         Add Salesman
     </button>
 </div>
@@ -138,17 +138,19 @@ function submitForm() {
 }
 
 function doDelete(id, name) {
-    if (!confirm('Delete salesman "' + name + '"? This cannot be undone.')) return;
-    fetch('/controllers/salesman_save.php', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action: 'delete', id: id })
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
-        else { showModal('Error', d.message, 'error'); }
-    })
-    .catch(() => showModal('Error', 'Delete failed.', 'error'));
+    confirmModal('Delete Salesman', 'Delete salesman "' + name + '"? This cannot be undone.', 'Delete').then(ok => {
+        if (!ok) return;
+        fetch('/controllers/salesman_save.php', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'delete', id: id })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
+            else { showModal('Error', d.message, 'error'); }
+        })
+        .catch(() => showModal('Error', 'Delete failed.', 'error'));
+    });
 }
 </script>
 <?php

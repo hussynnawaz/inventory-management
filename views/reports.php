@@ -51,7 +51,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.05zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73l.348.086z"/></svg>
+                    <?= icon('currency-dollar', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Gross Sales</div>
@@ -64,7 +64,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fee2e2;color:#991b1b;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l.84 4.479 9.144-.459L13.89 4zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+                    <?= icon('cart', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Purchases</div>
@@ -77,7 +77,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M14.5 1.5a.5.5 0 0 1 .5.5v4.8a2.5 2.5 0 0 1-2.5 2.5H2.707l3.347 3.346a.5.5 0 0 1-.708.708l-4.2-4.2a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 8.3H12.5A1.5 1.5 0 0 0 14 6.8V2a.5.5 0 0 1 .5-.5"/></svg>
+                    <?= icon('arrow-return-left', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Returns Refunded</div>
@@ -90,7 +90,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1zm1 12h2V2h-2zm-3 0V7H7v7zm-5 0v-3H2v3z"/></svg>
+                    <?= icon('clipboard', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Net Profit</div>

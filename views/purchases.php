@@ -48,7 +48,7 @@ ob_start();
         <p class="text-muted small mb-0">Record inventory purchases from suppliers and update cost prices & stock automatically.</p>
     </div>
     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#newPurchaseModal">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
+        <?= icon('plus', 16) ?>
         New Purchase
     </button>
 </div>
@@ -120,7 +120,7 @@ ob_start();
                     <!-- Search Product to add -->
                     <div class="cust-ac-wrap mb-3">
                         <div class="input-group">
-                            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></span>
+                            <span class="input-group-text bg-white"><?= icon('search', 14) ?></span>
                             <input type="text" id="purchProdSearch" autocomplete="off" placeholder="Search product by name or SKU to add..." class="form-control">
                         </div>
                         <div id="purchAcList" class="cust-ac-dropdown d-none"></div>
@@ -158,6 +158,40 @@ ob_start();
     </div>
 </div>
 
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="supplierModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Add New Supplier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="supplierForm">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small fw-medium">Supplier Name <span class="text-danger">*</span></label>
+                            <input type="text" id="s_name" autocomplete="off" required class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Phone</label>
+                            <input type="text" id="s_phone" autocomplete="off" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Email</label>
+                            <input type="email" id="s_email" autocomplete="off" class="form-control">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="sSaveBtn" onclick="saveSupplier()" class="btn btn-primary">Save Supplier</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const PRODUCTS = <?= json_encode(array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name'], 'sku' => $p['sku'], 'cost' => (float)$p['cost_price'], 'qty' => (int)$p['quantity']], $products), JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 
@@ -187,7 +221,7 @@ function addPurchProduct(id) {
     const p = PRODUCTS.find(x => x.id === id);
     if (!p) return;
     if (purchItems.some(it => it.id === p.id)) {
-        alert(p.name + ' is already added.');
+        showModal('Duplicate', p.name + ' is already added.', 'error');
     } else {
         purchItems.push({ id: p.id, name: p.name, sku: p.sku, qty: 1, cost: p.cost });
     }
@@ -232,34 +266,50 @@ function removePurchItem(idx) {
     renderPurchRows();
 }
 
+let supplierModal = null;
+
 function quickAddSupplier() {
-    const sName = prompt('Enter new supplier name:');
-    if (sName && sName.trim()) {
-        fetch('/controllers/supplier_save.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name: sName.trim() })
-        })
-        .then(r => r.json())
-        .then(d => {
-            if (d.success) {
-                const sel = document.getElementById('supplier_id');
-                const opt = document.createElement('option');
-                opt.value = d.supplier.id;
-                opt.textContent = d.supplier.name;
-                opt.selected = true;
-                sel.appendChild(opt);
-            } else {
-                alert(d.message);
-            }
-        });
-    }
+    document.getElementById('supplierForm').reset();
+    if (!supplierModal) supplierModal = new bootstrap.Modal(document.getElementById('supplierModal'));
+    supplierModal.show();
+    setTimeout(() => document.getElementById('s_name').focus(), 200);
+}
+
+function saveSupplier() {
+    const name = document.getElementById('s_name').value.trim();
+    if (!name) { showModal('Validation Error', 'Supplier Name is required.', 'error'); return; }
+
+    const btn = document.getElementById('sSaveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+
+    fetch('/controllers/supplier_save.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name: name, phone: document.getElementById('s_phone').value.trim(), email: document.getElementById('s_email').value.trim() })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false; btn.textContent = 'Save Supplier';
+        if (d.success) {
+            const sel = document.getElementById('supplier_id');
+            const opt = document.createElement('option');
+            opt.value = d.supplier.id;
+            opt.textContent = d.supplier.name + (d.supplier.phone ? ' (' + d.supplier.phone + ')' : '');
+            opt.selected = true;
+            sel.appendChild(opt);
+            if (supplierModal) supplierModal.hide();
+            showModal('Success', 'Supplier added successfully.', 'success');
+        } else {
+            showModal('Error', d.message, 'error');
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Save Supplier'; showModal('Error', 'Failed to save supplier.', 'error'); });
 }
 
 document.getElementById('purchaseForm').addEventListener('submit', function(e) {
     e.preventDefault();
     if (!purchItems.length) {
-        alert('Please add at least one product.');
+        showModal('Validation Error', 'Please add at least one product.', 'error');
         return;
     }
 
@@ -281,16 +331,16 @@ document.getElementById('purchaseForm').addEventListener('submit', function(e) {
     .then(r => r.json())
     .then(d => {
         if (d.success) {
-            alert(d.message);
-            window.location.reload();
+            showModal('Success', d.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert(d.message);
+            showModal('Error', d.message, 'error');
             btn.disabled = false;
             btn.textContent = 'Save Purchase';
         }
     })
     .catch(() => {
-        alert('Error saving purchase.');
+        showModal('Error', 'Error saving purchase.', 'error');
         btn.disabled = false;
         btn.textContent = 'Save Purchase';
     });

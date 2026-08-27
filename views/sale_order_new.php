@@ -6,6 +6,10 @@ require_once __DIR__ . '/../includes/modal.php';
 require_login();
 
 $products = $pdo->query('SELECT id, name, sale_price, quantity FROM products ORDER BY name ASC')->fetchAll();
+$categories = array_unique(array_filter(array_column(
+    $pdo->query('SELECT category FROM products WHERE category != "" ORDER BY category ASC')->fetchAll(),
+    'category'
+)));
 $now = date('Y-m-d H:i:s');
 $previewNo = 'SO-' . date('Ymd') . '-' . str_pad((int)$pdo->query('SELECT COUNT(*)+1 FROM sale_orders')->fetchColumn(), 4, '0', STR_PAD_LEFT);
 
@@ -24,6 +28,8 @@ ob_start();
     .ac-item:hover, .ac-item.active { background:#eff6ff; }
     .ac-item.active { outline:2px solid #3b82f6; outline-offset:-2px; }
     .ac-empty { padding:1rem; text-align:center; color:#94a3b8; font-size:.85rem; }
+    .ac-add-new { padding:.65rem .85rem; cursor:pointer; font-size:.85rem; display:flex; align-items:center; gap:.5rem; color:#3b82f6; font-weight:600; border-top:1px solid #e2e8f0; transition:background .1s; }
+    .ac-add-new:hover { background:#eff6ff; }
 </style>
 
 <div class="mb-3">
@@ -33,7 +39,7 @@ ob_start();
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/></svg>
+                        <?= icon('clipboard', 18) ?>
                     </div>
                     <div>
                         <h6 class="fw-bold mb-0">New Sale Order</h6>
@@ -61,7 +67,7 @@ ob_start();
                         <!-- Product Search -->
                         <div class="ac-wrap mb-4">
                             <div class="input-group">
-                                <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></span>
+                                <span class="input-group-text bg-white"><?= icon('search', 14) ?></span>
                                 <input type="text" id="productSearch" autocomplete="off" placeholder="Type product name to search..." class="form-control">
                             </div>
                             <div id="acList" class="ac-dropdown d-none"></div>
@@ -86,7 +92,7 @@ ob_start();
 
                         <!-- Empty State -->
                         <div id="emptyState" class="text-center py-5 border border-2 border-dashed rounded-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="text-muted mb-2" viewBox="0 0 16 16"><path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h13A1.5 1.5 0 0 1 16 3.5v2A1.5 1.5 0 0 1 14.5 7H9v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7H1.5A1.5 1.5 0 0 1 0 5.5z"/></svg>
+                            <?= icon('clipboard', 40, 'text-muted mb-2') ?>
                             <h6 class="text-muted small mb-1">No items added</h6>
                             <small class="text-muted">Search and select products above.</small>
                         </div>
@@ -178,10 +184,17 @@ ob_start();
                     <div class="card-body">
                         <h6 class="fw-bold mb-3">Billing Summary</h6>
                         <div class="row g-3 mb-4">
-                            <div class="col-12">
-                                <label class="form-label small fw-medium">Sales Tax %</label>
+                            <div class="col-6">
+                                <label class="form-label small fw-medium">Sales Tax (%)</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" min="0" step="0.01" id="sales_tax_pct" value="0" class="form-control fw-semibold">
+                                    <input type="number" min="0" step="0.1" id="sales_tax_pct" value="0" class="form-control fw-semibold">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-medium">Advanced Tax (%)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" min="0" step="0.1" id="advanced_tax_pct" value="0" class="form-control fw-semibold">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
@@ -191,9 +204,13 @@ ob_start();
                                 <span class="text-muted">Subtotal</span>
                                 <span id="subtotal" class="fw-semibold">Rs 0.00</span>
                             </div>
-                            <div class="d-flex justify-content-between small mb-3">
+                            <div class="d-flex justify-content-between small mb-2">
                                 <span class="text-muted">Sales Tax</span>
                                 <span id="stRow" class="fw-semibold">Rs 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between small mb-3">
+                                <span class="text-muted">Advanced Tax</span>
+                                <span id="atRow" class="fw-semibold">Rs 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center" style="border-top:2px dashed #dee2e6;padding-top:.75rem;">
                                 <span class="fw-bold">Total</span>
@@ -211,6 +228,107 @@ ob_start();
     </form>
 </div>
 
+<!-- Add New Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Add New Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addProductForm">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label small fw-medium">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" id="ap_name" autocomplete="off" required class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">SKU <span class="text-muted">(auto-generated)</span></label>
+                            <input type="text" id="ap_sku" readonly class="form-control font-monospace bg-light text-muted" placeholder="Auto-generated">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Category</label>
+                            <input type="text" id="ap_category" autocomplete="off" list="ap_category_list" class="form-control">
+                            <datalist id="ap_category_list">
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?= e($cat) ?>">
+                                <?php endforeach; ?>
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Purchase Price</label>
+                            <input type="number" min="0" step="0.01" value="0" id="ap_cost_price" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Selling Price <span class="text-danger">*</span></label>
+                            <input type="number" min="0" step="0.01" value="0" id="ap_sale_price" required class="form-control">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-medium">Initial Stock</label>
+                            <input type="number" min="0" step="1" value="0" id="ap_quantity" class="form-control">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="apSaveBtn" onclick="submitNewProduct()" class="btn btn-primary">Save &amp; Add to Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add New Customer Modal -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Add New Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCustomerForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" id="ac_name" autocomplete="off" required class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Contact Number</label>
+                            <input type="text" id="ac_contact" autocomplete="off" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Destination</label>
+                            <input type="text" id="ac_destination" autocomplete="off" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium">Address</label>
+                            <input type="text" id="ac_address" autocomplete="off" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">NTN No</label>
+                            <input type="text" id="ac_ntn_no" autocomplete="off" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">Sales Tax No</label>
+                            <input type="text" id="ac_sales_tax_no" autocomplete="off" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium">CNIC</label>
+                            <input type="text" id="ac_cnic" autocomplete="off" class="form-control">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="acSaveBtn" onclick="submitNewCustomer()" class="btn btn-primary">Save &amp; Select</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const PRODUCTS = <?= json_encode(array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name'], 'price' => (float)$p['sale_price'], 'qty' => (int)$p['quantity']], $products), JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 
@@ -221,18 +339,43 @@ let items = [];
 let selectedCustomer = null;
 let selectedSalesman = null;
 
-// ── Calc ──
+let addProductModal = null;
+let addCustomerModal = null;
+
+// ── Calc (updates summary values WITHOUT rebuilding rows) ──
 function recalc() {
     let subtotal = 0;
     items.forEach(it => { subtotal += it.qty * it.price; });
     const stPct = parseFloat(document.getElementById('sales_tax_pct').value) || 0;
+    const atPct = parseFloat(document.getElementById('advanced_tax_pct').value) || 0;
     const stAmt = subtotal * stPct / 100;
-    const net = subtotal + stAmt;
+    const atAmt = subtotal * atPct / 100;
+    const net = subtotal + stAmt + atAmt;
     document.getElementById('subtotal').textContent = fmt(subtotal);
     document.getElementById('stRow').textContent = fmt(stAmt);
+    document.getElementById('atRow').textContent = fmt(atAmt);
     document.getElementById('netTotal').textContent = fmt(net);
     document.getElementById('itemsCounter').textContent = items.length + (items.length === 1 ? ' Item' : ' Items');
-    renderRows();
+}
+
+// ── Update a single row's line total (no DOM rebuild) ──
+function updateRowTotal(idx) {
+    const body = document.getElementById('itemsBody');
+    const tr = body.children[idx];
+    if (!tr) return;
+    const it = items[idx];
+    const lineTotalCell = tr.querySelector('td:nth-child(5)');
+    if (lineTotalCell) lineTotalCell.textContent = fmt(it.qty * it.price);
+    const stock = typeof it.stock !== 'undefined' ? it.stock : (PRODUCTS.find(p => p.id === it.id)?.qty ?? 0);
+    const badge = tr.querySelector('td:nth-child(3) .badge');
+    if (badge) {
+        const lowStock = stock <= 5;
+        badge.className = 'badge ' + (lowStock ? 'bg-danger' : 'bg-success');
+        badge.textContent = stock + ' in stock';
+    }
+    const trAny = tr;
+    if (it.qty > stock) trAny.classList.add('table-danger');
+    else trAny.classList.remove('table-danger');
 }
 
 function renderRows() {
@@ -262,23 +405,24 @@ function renderRows() {
             '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-rm="'+idx+'" title="Remove">&#10005;</button></td>';
         body.appendChild(tr);
     });
-    body.querySelectorAll('.btn-qty-dec').forEach(b=>b.addEventListener('click',e=>{const i=parseInt(e.currentTarget.dataset.i);if(items[i].qty>1){items[i].qty--;recalc();}}));
+    body.querySelectorAll('.btn-qty-dec').forEach(b=>b.addEventListener('click',e=>{const i=parseInt(e.currentTarget.dataset.i);if(items[i].qty>1){items[i].qty--;updateRowTotal(i);recalc();}}));
     body.querySelectorAll('.btn-qty-inc').forEach(b=>b.addEventListener('click',e=>{
         const i=parseInt(e.currentTarget.dataset.i);
         const stock = typeof items[i].stock !== 'undefined' ? items[i].stock : (PRODUCTS.find(p => p.id === items[i].id)?.qty ?? 0);
-        if(items[i].qty < stock){items[i].qty++;recalc();}
+        if(items[i].qty < stock){items[i].qty++;updateRowTotal(i);recalc();}
         else{showModal('Stock Limit','Cannot exceed available stock of '+stock+'.','error');}
     }));
     body.querySelectorAll('.qty-input').forEach(el=>el.addEventListener('input',e=>{
-        const i=e.target.dataset.i;
+        const i=parseInt(e.target.dataset.i);
         const val=parseFloat(e.target.value)||0;
         const stock = typeof items[i].stock !== 'undefined' ? items[i].stock : (PRODUCTS.find(p => p.id === items[i].id)?.qty ?? 0);
-        if(val>stock){items[i].qty=stock;showModal('Stock Limit','Cannot exceed available stock of '+stock+'.','error');}
+        if(val>stock){items[i].qty=stock;e.target.value=stock;showModal('Stock Limit','Cannot exceed available stock of '+stock+'.','error');}
         else{items[i].qty=val;}
+        updateRowTotal(i);
         recalc();
     }));
-    body.querySelectorAll('.price-input').forEach(el=>el.addEventListener('input',e=>{items[e.target.dataset.i].price=parseFloat(e.target.value)||0;recalc();}));
-    body.querySelectorAll('[data-rm]').forEach(el=>el.addEventListener('click',e=>{items.splice(parseInt(e.currentTarget.dataset.rm),1);recalc();}));
+    body.querySelectorAll('.price-input').forEach(el=>el.addEventListener('input',e=>{items[parseInt(e.target.dataset.i)].price=parseFloat(e.target.value)||0;updateRowTotal(parseInt(e.target.dataset.i));recalc();}));
+    body.querySelectorAll('[data-rm]').forEach(el=>el.addEventListener('click',e=>{items.splice(parseInt(e.currentTarget.dataset.rm),1);renderRows();recalc();}));
 }
 
 // ── Product autocomplete ──
@@ -290,7 +434,14 @@ pSearch.addEventListener('input', () => {
     const q = pSearch.value.trim().toLowerCase();
     if (!q) { pAcList.classList.add('d-none'); return; }
     pAcRes = PRODUCTS.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8);
-    if (!pAcRes.length) { pAcList.classList.add('d-none'); return; }
+    if (!pAcRes.length) {
+        pAcList.innerHTML = '<div class="ac-empty">No products found</div>' +
+            '<div class="ac-add-new" id="acAddProduct"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg> Add New Product</div>';
+        pAcList.classList.remove('d-none');
+        document.getElementById('acAddProduct').addEventListener('click', () => openAddProductModal(pSearch.value.trim()));
+        pAcIdx = -1;
+        return;
+    }
     pAcList.innerHTML = pAcRes.map((p, i) =>
         '<div class="ac-item" data-i="'+i+'">' +
             '<div class="d-flex align-items-center gap-2"><span class="fw-semibold small">'+esc(p.name)+'</span><small class="text-muted font-monospace">#'+String(p.id).padStart(4,'0')+'</small></div>' +
@@ -325,7 +476,61 @@ function pickProduct(i) {
     }
     pSearch.value = '';
     pAcList.classList.add('d-none');
+    renderRows();
     recalc();
+}
+
+// ── Add New Product from POS ──
+function openAddProductModal(prefillName) {
+    document.getElementById('addProductForm').reset();
+    if (prefillName) document.getElementById('ap_name').value = prefillName;
+    if (!addProductModal) addProductModal = new bootstrap.Modal(document.getElementById('addProductModal'));
+    addProductModal.show();
+    setTimeout(() => document.getElementById('ap_name').focus(), 200);
+}
+
+function submitNewProduct() {
+    const name = document.getElementById('ap_name').value.trim();
+    const salePrice = parseFloat(document.getElementById('ap_sale_price').value) || 0;
+    if (!name) { showModal('Validation Error', 'Product Name is required.', 'error'); return; }
+    if (salePrice <= 0) { showModal('Validation Error', 'Selling Price must be greater than 0.', 'error'); return; }
+
+    const btn = document.getElementById('apSaveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+
+    fetch('/controllers/product_save.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            action: 'save',
+            name: name, sku: '',
+            category: document.getElementById('ap_category').value.trim(),
+            cost_price: parseFloat(document.getElementById('ap_cost_price').value) || 0,
+            sale_price: salePrice,
+            quantity: parseInt(document.getElementById('ap_quantity').value) || 0
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false; btn.textContent = 'Save & Add to Order';
+        if (d.success) {
+            const newId = d.product_id || (PRODUCTS.length ? Math.max(...PRODUCTS.map(p => p.id)) + 1 : 1);
+            const qty = parseInt(document.getElementById('ap_quantity').value) || 0;
+            const product = { id: newId, name: name, price: salePrice, qty: qty };
+            PRODUCTS.push(product);
+            if (qty > 0) {
+                items.push({ id: newId, name: name, qty: 1, price: salePrice, stock: qty });
+                renderRows();
+                recalc();
+            }
+            if (addProductModal) addProductModal.hide();
+            pSearch.value = '';
+            pAcList.classList.add('d-none');
+            showModal('Success', 'Product added and included in order.', 'success');
+        } else {
+            showModal('Error', d.message, 'error');
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Save & Add to Order'; showModal('Error', 'Failed to save product.', 'error'); });
 }
 
 // ── Customer autocomplete ──
@@ -343,8 +548,11 @@ cSearch.addEventListener('input', function() {
             .then(res => {
                 cAcRes = res;
                 if (!res.length) {
-                    cAcList.innerHTML = '<div class="ac-empty">No customers found.</div>';
+                    cAcList.innerHTML = '<div class="ac-empty">No customers found</div>' +
+                        '<div class="ac-add-new" id="acAddCustomer"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg> Add New Customer</div>';
                     cAcList.classList.remove('d-none');
+                    document.getElementById('acAddCustomer').addEventListener('click', () => openAddCustomerModal(q));
+                    cAcIdx = -1;
                     return;
                 }
                 cAcList.innerHTML = res.map((c, i) =>
@@ -407,6 +615,78 @@ function pickCustomer(i) {
         const el = document.getElementById(f);
         if (el) { el.readOnly = true; el.classList.add('field-locked'); }
     });
+}
+
+// ── Add New Customer from POS ──
+function openAddCustomerModal(prefillName) {
+    document.getElementById('addCustomerForm').reset();
+    if (prefillName) document.getElementById('ac_name').value = prefillName;
+    if (!addCustomerModal) addCustomerModal = new bootstrap.Modal(document.getElementById('addCustomerModal'));
+    addCustomerModal.show();
+    setTimeout(() => document.getElementById('ac_name').focus(), 200);
+}
+
+function submitNewCustomer() {
+    const name = document.getElementById('ac_name').value.trim();
+    if (!name) { showModal('Validation Error', 'Customer Name is required.', 'error'); return; }
+
+    const btn = document.getElementById('acSaveBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+
+    fetch('/controllers/customer_save.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            action: 'save',
+            name: name,
+            contact: document.getElementById('ac_contact').value.trim(),
+            destination: document.getElementById('ac_destination').value.trim(),
+            address: document.getElementById('ac_address').value.trim(),
+            ntn_no: document.getElementById('ac_ntn_no').value.trim(),
+            sales_tax_no: document.getElementById('ac_sales_tax_no').value.trim(),
+            cnic: document.getElementById('ac_cnic').value.trim()
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        btn.disabled = false; btn.textContent = 'Save & Select';
+        if (d.success) {
+            const code = d.code || '';
+            const newCustomer = {
+                code: code,
+                customer_name: name,
+                contact: document.getElementById('ac_contact').value.trim(),
+                destination: document.getElementById('ac_destination').value.trim(),
+                address: document.getElementById('ac_address').value.trim(),
+                ntn_no: document.getElementById('ac_ntn_no').value.trim(),
+                sales_tax_no: document.getElementById('ac_sales_tax_no').value.trim(),
+                cnic: document.getElementById('ac_cnic').value.trim()
+            };
+            selectedCustomer = newCustomer;
+            cSearch.value = code;
+            cAcList.classList.add('d-none');
+
+            const fields = ['customer_name','contact','destination','ntn_no','sales_tax_no','cnic','address'];
+            const mapFields = {customer_name:'customer_name',contact:'contact',destination:'destination',ntn_no:'ntn_no',sales_tax_no:'sales_tax_no',cnic:'cnic',address:'address'};
+            fields.forEach(f => { const el = document.getElementById(f); if (el) el.value = newCustomer[mapFields[f]] || ''; });
+            document.getElementById('fetchBadge').classList.remove('d-none');
+
+            document.getElementById('summary_name').textContent = name;
+            document.getElementById('summary_contact').textContent = newCustomer.contact || 'No Contact';
+            document.getElementById('customerAvatar').textContent = name.charAt(0).toUpperCase();
+            document.getElementById('customerSummaryCard').classList.remove('d-none');
+
+            fields.forEach(f => {
+                const el = document.getElementById(f);
+                if (el) { el.readOnly = true; el.classList.add('field-locked'); }
+            });
+
+            if (addCustomerModal) addCustomerModal.hide();
+            showModal('Success', 'Customer created and selected.', 'success');
+        } else {
+            showModal('Error', d.message, 'error');
+        }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Save & Select'; showModal('Error', 'Failed to save customer.', 'error'); });
 }
 
 // ── Salesman autocomplete ──
@@ -481,6 +761,7 @@ function pickSalesman(i) {
 
 // ── Submit ──
 document.getElementById('sales_tax_pct').addEventListener('input', recalc);
+document.getElementById('advanced_tax_pct').addEventListener('input', recalc);
 
 document.getElementById('saleForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -508,6 +789,7 @@ document.getElementById('saleForm').addEventListener('submit', function(e) {
         ntn_no: f.ntn_no.value, sales_tax_no: f.sales_tax_no.value,
         cnic: f.cnic.value, address: f.address.value,
         sales_tax_pct: f.sales_tax_pct.value,
+        advanced_tax_pct: f.advanced_tax_pct.value,
         items: items.map(it => ({ product_id: it.id, qty: it.qty, price: it.price })),
     };
 

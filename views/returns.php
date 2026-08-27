@@ -43,7 +43,7 @@ ob_start();
         <p class="text-muted small mb-0">Record product sales returns, issue refunds, and automatically restock returned units.</p>
     </div>
     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#newReturnModal">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M14.5 1.5a.5.5 0 0 1 .5.5v4.8a2.5 2.5 0 0 1-2.5 2.5H2.707l3.347 3.346a.5.5 0 0 1-.708.708l-4.2-4.2a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 8.3H12.5A1.5 1.5 0 0 0 14 6.8V2a.5.5 0 0 1 .5-.5"/></svg>
+        <?= icon('arrow-return-left', 16) ?>
         New Return
     </button>
 </div>
@@ -65,11 +65,12 @@ ob_start();
                     <th class="text-end">Total Refunded</th>
                     <th>Reason</th>
                     <th>Date</th>
+                    <th class="text-center" style="width:60px">PDF</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($returns)): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4">No product returns recorded yet. Click "New Return" above to add.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">No product returns recorded yet. Click "New Return" above to add.</td></tr>
                 <?php else: foreach ($returns as $r): ?>
                     <tr>
                         <td><span class="font-monospace fw-semibold text-danger"><?= e($r['return_no']) ?></span></td>
@@ -83,6 +84,11 @@ ob_start();
                         <td class="text-end fw-bold text-dark">Rs <?= number_format($r['line_total'], 2) ?></td>
                         <td class="text-muted small"><?= e($r['reason'] ?: 'None specified') ?></td>
                         <td class="text-muted small"><?= e($r['created_at']) ?></td>
+                        <td class="text-center">
+                            <a href="/controllers/return_pdf.php?return_no=<?= urlencode($r['return_no']) ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Download PDF">
+                                    <?= icon('file-earmark-text', 14) ?>
+                            </a>
+                        </td>
                     </tr>
                 <?php endforeach; endif; ?>
             </tbody>
@@ -115,7 +121,7 @@ ob_start();
                     <!-- Search Product to add manually if needed -->
                     <div class="cust-ac-wrap mb-3">
                         <div class="input-group">
-                            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></span>
+                            <span class="input-group-text bg-white"><?= icon('search', 14) ?></span>
                             <input type="text" id="retProdSearch" autocomplete="off" placeholder="Search product to add to return list..." class="form-control">
                         </div>
                         <div id="retAcList" class="cust-ac-dropdown d-none"></div>
@@ -158,6 +164,7 @@ ob_start();
 const PRODUCTS = <?= json_encode(array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name'], 'sku' => $p['sku'], 'price' => (float)$p['sale_price']], $products), JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 
 let returnItems = [];
+let returnSaleOrderNo = '';
 
 function fmt(n) { return 'Rs ' + Number(n).toLocaleString('en-PK', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -186,6 +193,7 @@ function selectSaleOrder(orderId, orderNo) {
     document.getElementById('sale_order_id').value = orderId;
     soSearch.value = orderNo;
     soAcList.classList.add('d-none');
+    returnSaleOrderNo = orderNo;
 
     // Fetch line items for this sale order
     fetch('/api/sale_order_items.php?order_id=' + orderId)
@@ -194,8 +202,9 @@ function selectSaleOrder(orderId, orderNo) {
             returnItems = [];
             items.forEach(it => {
                 returnItems.push({
-                    id: it.product_id,
+                    product_id: it.product_id,
                     name: it.product_name,
+                    sku: it.sku || '',
                     qty: 1,
                     refund_price: parseFloat(it.price) || 0,
                     reason: 'Customer return'
@@ -225,7 +234,7 @@ rSearch.addEventListener('input', () => {
 function addReturnProduct(id) {
     const p = PRODUCTS.find(x => x.id === id);
     if (!p) return;
-    returnItems.push({ id: p.id, name: p.name, qty: 1, refund_price: p.price, reason: '' });
+    returnItems.push({ product_id: p.id, name: p.name, sku: p.sku, qty: 1, refund_price: p.price, reason: '' });
     rSearch.value = '';
     rAcList.classList.add('d-none');
     renderReturnRows();
@@ -245,7 +254,7 @@ function renderReturnRows() {
         grandTotal += lineTotal;
         const tr = document.createElement('tr');
         tr.innerHTML =
-            '<td><div class="fw-semibold small">'+esc(it.name)+'</div></td>' +
+            '<td><div class="fw-semibold small">'+esc(it.name)+'</div><small class="text-muted font-monospace">'+esc(it.sku || '')+'</small></td>' +
             '<td><input type="number" min="1" value="'+it.qty+'" onchange="updateReturnItem('+idx+', \'qty\', this.value)" class="form-control form-control-sm text-center"></td>' +
             '<td><input type="number" min="0" step="0.01" value="'+it.refund_price+'" onchange="updateReturnItem('+idx+', \'refund_price\', this.value)" class="form-control form-control-sm fw-semibold"></td>' +
             '<td><input type="text" value="'+esc(it.reason)+'" onchange="updateReturnItem('+idx+', \'reason\', this.value)" placeholder="Defective, wrong item..." class="form-control form-control-sm"></td>' +
@@ -271,7 +280,7 @@ function removeReturnItem(idx) {
 document.getElementById('returnForm').addEventListener('submit', function(e) {
     e.preventDefault();
     if (!returnItems.length) {
-        alert('Please add at least one item to return.');
+        showModal('Validation Error', 'Please add at least one item to return.', 'error');
         return;
     }
 
@@ -292,16 +301,16 @@ document.getElementById('returnForm').addEventListener('submit', function(e) {
     .then(r => r.json())
     .then(d => {
         if (d.success) {
-            alert(d.message);
-            window.location.reload();
+            showModal('Success', d.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert(d.message);
+            showModal('Error', d.message, 'error');
             btn.disabled = false;
             btn.textContent = 'Process Return';
         }
     })
     .catch(() => {
-        alert('Error processing return.');
+        showModal('Error', 'Error processing return.', 'error');
         btn.disabled = false;
         btn.textContent = 'Process Return';
     });

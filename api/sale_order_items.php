@@ -13,7 +13,7 @@ if ($orderId <= 0) {
 }
 
 $stmt = $pdo->prepare('
-    SELECT soi.product_id, soi.product_name, soi.quantity, soi.price, p.cost_price
+    SELECT soi.product_id, soi.product_name, soi.quantity, soi.price, p.cost_price, p.sku
     FROM sale_order_items soi
     LEFT JOIN products p ON p.id = soi.product_id
     WHERE soi.sale_order_id = ?

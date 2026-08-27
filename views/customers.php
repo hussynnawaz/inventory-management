@@ -28,7 +28,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.543.68-3 3-3zM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></svg>
+                    <?= icon('people', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Customers</div>
@@ -41,7 +41,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M3.102 4l.84 4.479 9.144-.459L13.89 4zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/></svg>
+                    <?= icon('pin-map', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Destinations</div>
@@ -61,7 +61,7 @@ ob_start();
                     <div class="col-md-8">
                         <label class="form-label small fw-medium">Search</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></span>
+                            <span class="input-group-text bg-white border-end-0"><?= icon('search', 14) ?></span>
                             <input type="text" id="custSearch" oninput="applyFilters()" placeholder="Search code, name, contact or destination..." class="form-control border-start-0">
                         </div>
                     </div>
@@ -78,7 +78,7 @@ ob_start();
             </div>
             <div class="col-md-4 text-md-end">
                 <button type="button" onclick="openForm()" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
+                    <?= icon('plus', 14, 'me-1') ?>
                     Add Customer
                 </button>
             </div>
@@ -103,7 +103,7 @@ ob_start();
         </table>
     </div>
     <div id="emptyState" class="text-center py-5 d-none">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="text-muted mb-2" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/><path d="M7 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5"/></svg>
+        <?= icon('info-circle', 40, 'text-muted mb-2') ?>
         <p class="text-muted small mb-1">No customers found</p>
         <p class="text-muted" style="font-size:.75rem">Try a different search or filter.</p>
     </div>
@@ -255,17 +255,19 @@ function submitForm() {
 }
 
 function doDelete(id, name) {
-    if (!confirm('Delete customer "' + name + '"? This cannot be undone.')) return;
-    fetch('/controllers/customer_save.php', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ action: 'delete', id: id })
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
-        else { showModal('Error', d.message, 'error'); }
-    })
-    .catch(() => showModal('Error', 'Delete failed.', 'error'));
+    confirmModal('Delete Customer', 'Delete customer "' + name + '"? This cannot be undone.', 'Delete').then(ok => {
+        if (!ok) return;
+        fetch('/controllers/customer_save.php', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'delete', id: id })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
+            else { showModal('Error', d.message, 'error'); }
+        })
+        .catch(() => showModal('Error', 'Delete failed.', 'error'));
+    });
 }
 
 renderTable(CUSTOMERS);
