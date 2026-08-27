@@ -1,5 +1,6 @@
 <?php
 // Application configuration
+date_default_timezone_set('Asia/Karachi');
 return [
     'app_name' => 'MJ Traders Inventory',
     // Base URL of the app relative to web root, e.g. '/awais' or '' if public/ is the doc root.

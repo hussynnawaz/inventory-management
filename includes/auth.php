@@ -1,6 +1,7 @@
 <?php
 // Session + auth helpers
 session_start();
+date_default_timezone_set('Asia/Karachi');
 
 function is_logged_in(): bool {
     return isset($_SESSION['user_id']);

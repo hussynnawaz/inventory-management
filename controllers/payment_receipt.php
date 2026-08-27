@@ -161,13 +161,11 @@ $paymentDetailRows = '';
 if ($method === 'cash') {
     $paymentDetailRows = "
         ".infoRow('Collector Name', e2($collector))."
-        ".infoRow('Payment Mode', 'Cash')."
     ";
 } else {
     $paymentDetailRows = "
         ".infoRow('Banking Channel', e2($bankChan))."
         ".infoRow('Transaction ID', e2($txnId))."
-        ".infoRow('Payment Mode', 'Bank Transfer')."
     ";
 }
 
