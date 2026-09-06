@@ -76,7 +76,7 @@ ob_start();
         </table>
     </div>
     <div id="emptyState" class="text-center py-5 d-none">
-        <?= icon('info-circle', 40, 'text-muted mb-2') ?>
+        <?= icon('info', 40, 'text-muted mb-2') ?>
         <p class="text-muted small mb-1">No suppliers found</p>
         <p class="text-muted" style="font-size:.75rem">Try a different search.</p>
     </div>

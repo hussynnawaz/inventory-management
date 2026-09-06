@@ -51,7 +51,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <?= icon('currency-dollar', 22) ?>
+                    <?= icon('dollar-sign', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Gross Sales</div>
@@ -64,7 +64,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fee2e2;color:#991b1b;">
-                    <?= icon('cart', 22) ?>
+                    <?= icon('shopping-cart', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Purchases</div>
@@ -77,7 +77,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <?= icon('arrow-return-left', 22) ?>
+                    <?= icon('rotate-ccw', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Returns Refunded</div>

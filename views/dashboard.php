@@ -19,7 +19,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <?= icon('boxes', 22) ?>
+                    <?= icon('package', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Products</div>
@@ -32,7 +32,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <?= icon('currency-dollar', 22) ?>
+                    <?= icon('dollar-sign', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Sales</div>
@@ -45,7 +45,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <?= icon('cart', 22) ?>
+                    <?= icon('shopping-cart', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Purchases</div>
@@ -58,7 +58,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fee2e2;color:#991b1b;">
-                    <?= icon('exclamation-triangle', 22) ?>
+                    <?= icon('alert-triangle', 22) ?>
                 </div>
                 <div>
                     <div class="stat-label">Low Stock Items</div>
@@ -97,7 +97,7 @@ ob_start();
                         <td class="text-end fw-semibold">Rs <?= number_format($o['total'], 2) ?></td>
                         <td class="text-center">
                             <a href="/controllers/sale_order_pdf.php?id=<?= $o['id'] ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Download PDF">
-                                <?= icon('file-earmark-text', 14) ?>
+                                <?= icon('file-text', 14) ?>
                             </a>
                         </td>
                     </tr>

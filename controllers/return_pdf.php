@@ -41,16 +41,70 @@ if (!empty($first['sale_order_id'])) {
     $orderInfo = $oStmt->fetch();
 }
 
-// Logo + Stamp
-$logoPath = '';
-$logoFile = __DIR__ . '/../public/assets/images/mj-logo.png';
-$r = realpath($logoFile);
-if ($r && file_exists($r)) $logoPath = $r;
+// Logo + Stamp (optimized)
+$logoPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-logo.png', 300);
+$stampPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-traders-stamp.png', 200);
 
-$stampPath = '';
-$stampFile = __DIR__ . '/../public/assets/images/mj-traders-stamp.png';
-$r2 = realpath($stampFile);
-if ($r2 && file_exists($r2)) $stampPath = $r2;
+// --- PDF Cache Setup ---
+$cacheDir = __DIR__ . '/../cache/pdfs';
+if (!is_dir($cacheDir)) { mkdir($cacheDir, 0755, true); }
+$cacheFile = $cacheDir . '/return_' . $retNo . '.pdf';
+
+if (file_exists($cacheFile)) {
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: inline; filename="' . $retNo . '.pdf"');
+    header('Content-Length: ' . filesize($cacheFile));
+    readfile($cacheFile);
+    exit;
+}
+
+/**
+ * Resize high-resolution PNG images for fast embedding in Dompdf.
+ */
+function getOptimizedImagePath(string $path, int $targetWidth = 300): string {
+    $realPath = realpath($path);
+    if (!$realPath || !file_exists($realPath)) {
+        return '';
+    }
+
+    $cacheImgDir = __DIR__ . '/../cache/images';
+    if (!is_dir($cacheImgDir)) {
+        mkdir($cacheImgDir, 0755, true);
+    }
+
+    $filename = pathinfo($realPath, PATHINFO_FILENAME);
+    $ext = strtolower(pathinfo($realPath, PATHINFO_EXTENSION));
+    $cacheFile = $cacheImgDir . '/' . $filename . '_' . $targetWidth . '.' . $ext;
+
+    if (file_exists($cacheFile) && filemtime($cacheFile) >= filemtime($realPath)) {
+        return $cacheFile;
+    }
+
+    if ($ext === 'png' && function_exists('imagecreatefrompng')) {
+        $info = @getimagesize($realPath);
+        if ($info && $info[0] > 0) {
+            $w = $info[0];
+            $h = $info[1];
+            if ($w <= $targetWidth) {
+                return $realPath;
+            }
+            $targetHeight = (int)round($targetWidth * $h / $w);
+            $srcImg = @imagecreatefrompng($realPath);
+            if ($srcImg) {
+                $dstImg = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($dstImg, false);
+                imagesavealpha($dstImg, true);
+                imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $w, $h);
+                imagepng($dstImg, $cacheFile, 7);
+                imagedestroy($srcImg);
+                imagedestroy($dstImg);
+                return $cacheFile;
+            }
+        }
+    }
+
+    return $realPath;
+}
 
 function e2($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 function fmt($v) { return number_format((float)$v, 2); }
@@ -284,6 +338,7 @@ $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
 $pdfContent = $dompdf->output();
+file_put_contents($cacheFile, $pdfContent);
 
 if (ob_get_length()) ob_clean();
 header('Content-Type: application/pdf');

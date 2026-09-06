@@ -48,7 +48,7 @@ ob_start();
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
                                 <a href="/controllers/sale_order_pdf.php?id=<?= $o['id'] ?>" target="_blank" class="btn btn-outline-danger" title="Download PDF">
-                                    <?= icon('file-earmark-text', 14) ?>
+                                    <?= icon('file-text', 14) ?>
                                 </a>
                                 <a href="/views/sale_order_view.php?id=<?= $o['id'] ?>" class="btn btn-outline-primary" title="View Details">
                                     <?= icon('eye', 14) ?>

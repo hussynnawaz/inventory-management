@@ -43,7 +43,7 @@ ob_start();
         <p class="text-muted small mb-0">Record product sales returns, issue refunds, and automatically restock returned units.</p>
     </div>
     <button type="button" class="btn btn-primary btn-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#newReturnModal">
-        <?= icon('arrow-return-left', 16) ?>
+        <?= icon('rotate-ccw', 16) ?>
         New Return
     </button>
 </div>
@@ -86,7 +86,7 @@ ob_start();
                         <td class="text-muted small"><?= e($r['created_at']) ?></td>
                         <td class="text-center">
                             <a href="/controllers/return_pdf.php?return_no=<?= urlencode($r['return_no']) ?>" target="_blank" class="btn btn-sm btn-outline-danger" title="Download PDF">
-                                    <?= icon('file-earmark-text', 14) ?>
+                                    <?= icon('file-text', 14) ?>
                             </a>
                         </td>
                     </tr>

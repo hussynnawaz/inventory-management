@@ -20,7 +20,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <?= icon('boxes', 20) ?>
+                    <?= icon('package', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Products</div>
@@ -46,7 +46,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fee2e2;color:#991b1b;">
-                    <?= icon('info-circle', 20) ?>
+                    <?= icon('info', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Low Stock (≤5)</div>
@@ -59,7 +59,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <?= icon('currency-dollar', 20) ?>
+                    <?= icon('dollar-sign', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Inventory Value</div>

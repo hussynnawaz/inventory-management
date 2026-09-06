@@ -7,17 +7,17 @@ function render_page(string $title, string $content, string $footer = ''): void 
     $user = current_user();
     $logo = asset($config['logo']);
     $nav = [
-        'dashboard'  => ['label' => 'Dashboard',      'icon' => 'speedometer',        'href' => '/views/dashboard.php'],
-        'products'   => ['label' => 'Products',       'icon' => 'boxes',              'href' => '/views/products.php'],
-        'sale_new'   => ['label' => 'New Sale Order',  'icon' => 'plus-circle',        'href' => '/views/sale_order_new.php'],
-        'sales'      => ['label' => 'Sales',           'icon' => 'receipt',            'href' => '/views/sales.php'],
-        'customers'  => ['label' => 'Customers',       'icon' => 'people',             'href' => '/views/customers.php'],
-        'suppliers'  => ['label' => 'Suppliers',       'icon' => 'truck',              'href' => '/views/suppliers.php'],
-        'salesmen'   => ['label' => 'Salesmen',        'icon' => 'person-badge',       'href' => '/views/salesmen.php'],
-        'purchases'  => ['label' => 'Purchases',       'icon' => 'cart',               'href' => '/views/purchases.php'],
-        'ledger'     => ['label' => 'Ledger',           'icon' => 'wallet',             'href' => '/views/ledger.php'],
-        'returns'    => ['label' => 'Returns',         'icon' => 'arrow-return-left',  'href' => '/views/returns.php'],
-        'reports'    => ['label' => 'Reports',         'icon' => 'bar-chart',          'href' => '/views/reports.php'],
+        'dashboard'  => ['label' => 'Dashboard',      'icon' => 'home',             'href' => '/views/dashboard.php'],
+        'products'   => ['label' => 'Products',       'icon' => 'package',          'href' => '/views/products.php'],
+        'sale_new'   => ['label' => 'New Sale Order',  'icon' => 'plus-circle',      'href' => '/views/sale_order_new.php'],
+        'sales'      => ['label' => 'Sales',           'icon' => 'file-text',        'href' => '/views/sales.php'],
+        'customers'  => ['label' => 'Customers',       'icon' => 'users',            'href' => '/views/customers.php'],
+        'suppliers'  => ['label' => 'Suppliers',       'icon' => 'truck',            'href' => '/views/suppliers.php'],
+        'salesmen'   => ['label' => 'Salesmen',        'icon' => 'user',             'href' => '/views/salesmen.php'],
+        'purchases'  => ['label' => 'Purchases',       'icon' => 'shopping-cart',    'href' => '/views/purchases.php'],
+        'ledger'     => ['label' => 'Ledger',           'icon' => 'wallet',           'href' => '/views/ledger.php'],
+        'returns'    => ['label' => 'Returns',         'icon' => 'rotate-ccw',       'href' => '/views/returns.php'],
+        'reports'    => ['label' => 'Reports',         'icon' => 'bar-chart-3',      'href' => '/views/reports.php'],
     ];
     $current = basename($_SERVER['PHP_SELF']);
     ?>
@@ -27,6 +27,7 @@ function render_page(string $title, string $content, string $footer = ''): void 
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title><?= e($title) ?> &middot; <?= e($config['app_name']) ?></title>
+        <link rel="stylesheet" href="<?= e(asset('styles/tailwind.css')) ?>">
         <link rel="stylesheet" href="<?= e(asset('assets/css/bootstrap.min.css')) ?>">
         <style>
             :root {
@@ -81,7 +82,7 @@ function render_page(string $title, string $content, string $footer = ''): void 
                 background: var(--sidebar-active); color: #fff;
                 box-shadow: 0 2px 10px rgba(59,130,246,.35);
             }
-            .nav-item-link svg { flex-shrink: 0; opacity: .7; }
+            .nav-item-link svg { flex-shrink: 0; opacity: .8; width: 18px; height: 18px; }
             .nav-item-link.active svg { opacity: 1; }
             .sidebar-footer {
                 padding: .85rem 1rem;
@@ -91,10 +92,12 @@ function render_page(string $title, string $content, string $footer = ''): void 
             .sidebar-footer .user-name { color: #fff; font-size: .8rem; font-weight: 600; }
             .sidebar-footer .user-role { color: rgba(255,255,255,.4); font-size: .7rem; }
             .sidebar-footer .sign-out {
-                color: #f87171; font-size: .75rem; text-decoration: none;
-                transition: color .15s;
+                color: #f87171; font-size: .8rem; text-decoration: none;
+                transition: color .15s; display: flex; align-items: center; gap: .5rem;
+                padding: .4rem .5rem; border-radius: .4rem;
             }
-            .sidebar-footer .sign-out:hover { color: #fca5a5; }
+            .sidebar-footer .sign-out:hover { color: #fca5a5; background: rgba(248,113,113,.1); }
+            .sidebar-footer .sign-out svg { opacity: .8; }
 
             /* Main area */
             .app-main {
@@ -262,7 +265,10 @@ function render_page(string $title, string $content, string $footer = ''): void 
                         <div class="user-role"><?= e(ucfirst($user['role'])) ?></div>
                     </div>
                 </div>
-                <a href="/logout.php" class="sign-out d-block">&#8617; Sign out</a>
+                <a href="/logout.php" class="sign-out d-flex align-items-center gap-2">
+                    <?= icon('log-out', 16) ?>
+                    Sign out
+                </a>
             </div>
         </aside>
 

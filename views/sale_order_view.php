@@ -41,7 +41,7 @@ ob_start();
                         <small class="text-muted"><?= e($order['order_date']) ?></small>
                     </div>
                     <a href="/controllers/sale_order_pdf.php?id=<?= $order['id'] ?>" target="_blank" class="btn btn-danger btn-sm">
-                        <?= icon('file-earmark-text', 14, 'me-1') ?>
+                        <?= icon('file-text', 14, 'me-1') ?>
                         Download PDF
                     </a>
                 </div>

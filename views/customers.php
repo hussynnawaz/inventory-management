@@ -28,7 +28,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <?= icon('people', 20) ?>
+                    <?= icon('users', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Customers</div>
@@ -41,7 +41,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <?= icon('pin-map', 20) ?>
+                    <?= icon('map-pin', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Destinations</div>
@@ -103,7 +103,7 @@ ob_start();
         </table>
     </div>
     <div id="emptyState" class="text-center py-5 d-none">
-        <?= icon('info-circle', 40, 'text-muted mb-2') ?>
+        <?= icon('info', 40, 'text-muted mb-2') ?>
         <p class="text-muted small mb-1">No customers found</p>
         <p class="text-muted" style="font-size:.75rem">Try a different search or filter.</p>
     </div>

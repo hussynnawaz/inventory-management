@@ -72,7 +72,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <?= icon('file-earmark-text', 20) ?>
+                    <?= icon('file-text', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Invoices</div>
@@ -85,7 +85,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#d1fae5;color:#065f46;">
-                    <?= icon('info-circle', 20) ?>
+                    <?= icon('info', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Total Sales</div>
@@ -111,7 +111,7 @@ ob_start();
         <div class="card stat-card h-100">
             <div class="card-body d-flex align-items-center gap-3 p-4">
                 <div class="stat-icon" style="background:#fef3c7;color:#92400e;">
-                    <?= icon('info-circle', 20) ?>
+                    <?= icon('info', 20) ?>
                 </div>
                 <div>
                     <div class="stat-label">Outstanding</div>
@@ -133,7 +133,7 @@ ob_start();
                 </div>
                 <div id="invoiceList" class="card-body p-0" style="max-height:480px;overflow-y:auto;">
                     <div class="text-center py-5 text-muted">
-                        <?= icon('file-earmark-text', 36, 'mb-2') ?>
+                        <?= icon('file-text', 36, 'mb-2') ?>
                         <div class="small">Select a customer to view invoices</div>
                     </div>
                 </div>
@@ -190,11 +190,11 @@ ob_start();
                     <label class="form-label small fw-medium">Payment Method <span class="text-danger">*</span></label>
                     <div class="d-flex gap-2">
                         <button type="button" id="btnCash" onclick="setMethod('cash')" class="btn btn-outline-primary flex-fill active">
-                            <?= icon('cash-stack', 14, 'me-1') ?>
+                            <?= icon('banknote', 14, 'me-1') ?>
                             Cash
                         </button>
                         <button type="button" id="btnBank" onclick="setMethod('bank')" class="btn btn-outline-primary flex-fill">
-                            <?= icon('bank', 14, 'me-1') ?>
+                            <?= icon('landmark', 14, 'me-1') ?>
                             Bank
                         </button>
                     </div>
