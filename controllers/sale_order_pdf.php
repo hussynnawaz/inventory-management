@@ -103,7 +103,8 @@ $stampPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-trader
 
 $taxPct = (float)$order['sales_tax_pct'];
 $advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
-$totalTaxPct = $taxPct + $advTaxPct;
+$totalTaxPct = $taxPct + $advTaxPct + ($taxPct * $advTaxPct / 100);
+$totalTaxLabel = rtrim(rtrim(number_format($totalTaxPct, 2, '.', ''), '0'), '.');
 
 function e2($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
 function fmt($v) { return number_format((float)$v, 2); }
@@ -294,7 +295,7 @@ $html = "
             <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:72px;'>SKU</th>
             <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:36px;'>Qty</th>
             <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:78px;'>Unit Price</th>
-            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$totalTaxPct}%)</th>
+            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$totalTaxLabel}%)</th>
             <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:82px;'>Amount</th>
         </tr>
     </thead>

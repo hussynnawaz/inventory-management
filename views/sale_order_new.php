@@ -349,8 +349,9 @@ function recalc() {
     const stPct = parseFloat(document.getElementById('sales_tax_pct').value) || 0;
     const atPct = parseFloat(document.getElementById('advanced_tax_pct').value) || 0;
     const stAmt = subtotal * stPct / 100;
-    const atAmt = subtotal * atPct / 100;
-    const net = subtotal + stAmt + atAmt;
+    const afterSalesTax = subtotal + stAmt;
+    const atAmt = afterSalesTax * atPct / 100;
+    const net = afterSalesTax + atAmt;
     document.getElementById('subtotal').textContent = fmt(subtotal);
     document.getElementById('stRow').textContent = fmt(stAmt);
     document.getElementById('atRow').textContent = fmt(atAmt);

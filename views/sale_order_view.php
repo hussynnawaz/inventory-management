@@ -48,22 +48,24 @@ ob_start();
 
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead class="bg-light">
+                            <?php
+                            $taxPct = (float)$order['sales_tax_pct'];
+                            $advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
+                            $totalTaxPct = $taxPct + $advTaxPct + ($taxPct * $advTaxPct / 100);
+                            ?>
+                            <thead class="bg-light">
                             <tr>
                                 <th class="small fw-semibold">#</th>
                                 <th class="small fw-semibold">Product</th>
                                 <th class="small fw-semibold">SKU</th>
                                 <th class="small fw-semibold text-center">Qty</th>
                                 <th class="small fw-semibold text-end">Unit Price</th>
-                                <th class="small fw-semibold text-end">Tax (<?= $totalTaxPct ?>%)</th>
+                                <th class="small fw-semibold text-end">Tax (<?= round($totalTaxPct, 2) ?>%)</th>
                                 <th class="small fw-semibold text-end">Line Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
-                            $taxPct = (float)$order['sales_tax_pct'];
-                            $advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
-                            $totalTaxPct = $taxPct + $advTaxPct;
                             $i = 1;
                             foreach ($items as $it):
                                 $lineTotal = (float)$it['line_total'];

@@ -74,8 +74,9 @@ foreach ($items as $it) {
 $salesTaxPct = (float)($input['sales_tax_pct'] ?? 0);
 $salesTaxAmt = round($subtotal * $salesTaxPct / 100, 2);
 $advancedTaxPct = (float)($input['advanced_tax_pct'] ?? 0);
-$advancedTaxAmt = round($subtotal * $advancedTaxPct / 100, 2);
-$total = round($subtotal + $salesTaxAmt + $advancedTaxAmt, 2);
+$taxableAfterSalesTax = round($subtotal + $salesTaxAmt, 2);
+$advancedTaxAmt = round($taxableAfterSalesTax * $advancedTaxPct / 100, 2);
+$total = round($taxableAfterSalesTax + $advancedTaxAmt, 2);
 
 try {
     $pdo->beginTransaction();
