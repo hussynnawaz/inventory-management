@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/invoice_calculations.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_login();
 
@@ -24,90 +25,25 @@ $items = $pdo->prepare('
 $items->execute([$id]);
 $items = $items->fetchAll();
 
-// Get salesman name from salesmen table
-$salesmanName = $order['salesman'] ?? '';
-if (!empty($order['salesman_id'])) {
-    $smStmt = $pdo->prepare('SELECT name FROM salesmen WHERE id = ?');
-    $smStmt->execute([$order['salesman_id']]);
-    $sm = $smStmt->fetchColumn();
-    if ($sm) $salesmanName = $sm;
-}
+$logoPath = __DIR__ . '/../public/assets/images/mj-logo.png';
+$stampPath = __DIR__ . '/../public/assets/images/mj-traders-stamp.png';
 
-// --- PDF Cache Setup ---
-$cacheDir = __DIR__ . '/../cache/pdfs';
-if (!is_dir($cacheDir)) { mkdir($cacheDir, 0755, true); }
-$cacheFile = $cacheDir . '/sale_order_' . $id . '.pdf';
+$logoData = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+$stampData = file_exists($stampPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($stampPath)) : '';
 
-// Serve from cache if it exists and order hasn't been modified since generation
-if (file_exists($cacheFile)) {
-    $cachedAt = filemtime($cacheFile);
-    $modifiedAt = strtotime($order['updated_at'] ?? $order['created_at'] ?? 'now');
-    if ($cachedAt >= $modifiedAt) {
-        header('Content-Type: application/pdf');
-        header('Content-Length: ' . filesize($cacheFile));
-        readfile($cacheFile);
-        exit;
-    }
-}
-
-/**
- * Resize high-resolution PNG images for fast embedding in Dompdf.
- */
-function getOptimizedImagePath(string $path, int $targetWidth = 300): string {
-    $realPath = realpath($path);
-    if (!$realPath || !file_exists($realPath)) {
-        return '';
-    }
-
-    $cacheImgDir = __DIR__ . '/../cache/images';
-    if (!is_dir($cacheImgDir)) {
-        mkdir($cacheImgDir, 0755, true);
-    }
-
-    $filename = pathinfo($realPath, PATHINFO_FILENAME);
-    $ext = strtolower(pathinfo($realPath, PATHINFO_EXTENSION));
-    $cacheFile = $cacheImgDir . '/' . $filename . '_' . $targetWidth . '.' . $ext;
-
-    if (file_exists($cacheFile) && filemtime($cacheFile) >= filemtime($realPath)) {
-        return $cacheFile;
-    }
-
-    if ($ext === 'png' && function_exists('imagecreatefrompng')) {
-        $info = @getimagesize($realPath);
-        if ($info && $info[0] > 0) {
-            $w = $info[0];
-            $h = $info[1];
-            if ($w <= $targetWidth) {
-                return $realPath;
-            }
-            $targetHeight = (int)round($targetWidth * $h / $w);
-            $srcImg = @imagecreatefrompng($realPath);
-            if ($srcImg) {
-                $dstImg = imagecreatetruecolor($targetWidth, $targetHeight);
-                imagealphablending($dstImg, false);
-                imagesavealpha($dstImg, true);
-                imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $targetWidth, $targetHeight, $w, $h);
-                imagepng($dstImg, $cacheFile, 7);
-                imagedestroy($srcImg);
-                imagedestroy($dstImg);
-                return $cacheFile;
-            }
-        }
-    }
-
-    return $realPath;
-}
-
-$logoPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-logo.png', 300);
-$stampPath = getOptimizedImagePath(__DIR__ . '/../public/assets/images/mj-traders-stamp.png', 200);
-
-$taxPct = (float)$order['sales_tax_pct'];
-$advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
-$totalTaxPct = $taxPct + $advTaxPct + ($taxPct * $advTaxPct / 100);
-$totalTaxLabel = rtrim(rtrim(number_format($totalTaxPct, 2, '.', ''), '0'), '.');
+$t = invoice_totals_from_order($order);
+$taxPct = $t['sales_tax_pct'];
+$advTaxPct = $t['advanced_tax_pct'];
+$salesTaxAmt = $t['sales_tax_amt'];
+$advTaxAmt = $t['advanced_tax_amt'];
+$subtotal = $t['subtotal'];
+$grandTotal = $t['net_total'];
+$amountPaid = invoice_order_amount_paid($pdo, (int)$order['id']);
+$amountRemaining = invoice_amount_remaining($grandTotal, $amountPaid);
+$itemTaxes = invoice_line_sales_taxes($items, $taxPct, $salesTaxAmt);
 
 function e2($v) { return htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8'); }
-function fmt($v) { return number_format((float)$v, 2); }
+function fmt($v) { return invoice_fmt($v); }
 
 function spellUnder100(int $n): string {
     $ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
@@ -174,9 +110,9 @@ function infoRow(string $label, string $value): string {
 
 $rows = '';
 $i = 1;
-foreach ($items as $it) {
-    $lineTotal = (float)$it['line_total'];
-    $itemTax = round($lineTotal * $totalTaxPct / 100, 2);
+foreach (array_values($items) as $idx => $it) {
+    $lineTotal = invoice_round($it['line_total']);
+    $itemTax = $itemTaxes[$idx] ?? 0;
     $rows .= "
     <tr>
         <td style='padding:7px 6px;border-bottom:1px solid #000;text-align:center;font-size:11px;'>{$i}</td>
@@ -190,14 +126,39 @@ foreach ($items as $it) {
     $i++;
 }
 
-$amountWords = e2(amountInWords((float)$order['total']));
+$amountWords = e2(amountInWords($grandTotal));
 
-$logoBlock = $logoPath
-    ? "<img src='{$logoPath}' style='width:150px;height:auto;display:block;' />"
+// Payment status is derived from the live payments + the stored order total,
+// so it always matches the invoice after an edit (the PDF is re-read from the
+// database every time it is generated and any cached copy is dropped on save).
+$paymentStatus = invoice_payment_status($grandTotal, $amountPaid);
+$statusLabels = ['paid' => 'PAID', 'partial' => 'PARTIALLY PAID', 'unpaid' => 'UNPAID'];
+$statusLabel  = $statusLabels[$paymentStatus] ?? strtoupper($paymentStatus);
+$statusColor  = $paymentStatus === 'paid' ? '#16a34a' : ($paymentStatus === 'partial' ? '#b45309' : '#dc2626');
+
+$paidRows = "
+            <tr>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Payment Status</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;font-weight:bold;color:{$statusColor};border-bottom:1px solid #000;'>{$statusLabel}</td>
+            </tr>";
+if ($amountPaid > 0 || $amountRemaining > 0) {
+    $paidRows .= "
+            <tr>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Amount Paid</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($amountPaid)."</td>
+            </tr>
+            <tr>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Amount Remaining</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($amountRemaining)."</td>
+            </tr>";
+}
+
+$logoBlock = $logoData
+    ? "<img src='{$logoData}' style='width:150px;height:auto;display:block;' />"
     : "<div style='width:150px;height:150px;border:1px solid #000;font-size:32px;font-weight:bold;text-align:center;line-height:150px;'>MJ</div>";
 
 $stampBlock = '';
-if ($stampPath) {
+if ($stampData) {
     $stampBlock = "
     <table width='100%' cellpadding='0' cellspacing='0' style='margin-top:30px;'>
         <tr>
@@ -210,7 +171,7 @@ if ($stampPath) {
                 </div>
             </td>
             <td style='width:45%;text-align:center;vertical-align:bottom;'>
-                <img src='{$stampPath}' style='width:100px;height:auto;margin-bottom:6px;' />
+                <img src='{$stampData}' style='width:100px;height:auto;margin-bottom:6px;' />
                 <div style='border-top:1px solid #000;width:170px;margin:0 auto;'></div>
                 <div style='font-size:10px;color:#000;margin-top:5px;font-weight:bold;'>Authorized Signature</div>
             </td>
@@ -226,7 +187,7 @@ $html = "
 <style>
     @page { margin: 24mm 26mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Helvetica, Arial, sans-serif; color: #000; font-size: 11px; line-height: 1.4; padding: 6mm 4mm; }
+    body { font-family: Calibri, sans-serif; color: #000; font-size: 11px; line-height: 1.4; padding: 6mm 4mm; }
 </style>
 </head>
 <body>
@@ -275,12 +236,13 @@ $html = "
     </td>
     <td style='width:4%;'></td>
     <td style='width:48%;vertical-align:top;'>
-        <div style='font-size:11px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #000;padding-bottom:4px;'>Tax Information</div>
+        <div style='font-size:11px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #000;padding-bottom:4px;'>Tax &amp; Delivery</div>
         <table width='100%' cellpadding='0' cellspacing='0'>
             ".infoRow('NTN No', e2($order['ntn_no'] ?: '-'))."
             ".infoRow('Sales Tax No', e2($order['sales_tax_no'] ?: '-'))."
             ".infoRow('CNIC', e2($order['cnic'] ?: '-'))."
-            ".infoRow('Salesman', e2($salesmanName ?: '-'))."
+            ".infoRow('Route', e2($order['delivery_route'] ?: '-'))."
+            ".infoRow('Salesman', e2($order['salesman'] ?: '-'))."
         </table>
     </td>
 </tr>
@@ -295,7 +257,7 @@ $html = "
             <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:72px;'>SKU</th>
             <th style='padding:8px 6px;border-bottom:1px solid #000;text-align:center;font-size:10px;font-weight:bold;width:36px;'>Qty</th>
             <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:78px;'>Unit Price</th>
-            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$totalTaxLabel}%)</th>
+            <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:72px;'>Tax ({$taxPct}%)</th>
             <th style='padding:8px;border-bottom:1px solid #000;text-align:right;font-size:10px;font-weight:bold;width:82px;'>Amount</th>
         </tr>
     </thead>
@@ -321,20 +283,21 @@ $html = "
         <table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #000;'>
             <tr>
                 <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Subtotal</td>
-                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;width:100px;'>Rs ".fmt($order['subtotal'])."</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;width:100px;'>Rs ".fmt($subtotal)."</td>
             </tr>
             <tr>
                 <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Sales Tax ({$taxPct}%)</td>
-                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($order['sales_tax_amt'])."</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($salesTaxAmt)."</td>
             </tr>
             <tr>
-                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Advanced Tax ({$advTaxPct}%)</td>
-                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($order['advanced_tax_amt'] ?? 0)."</td>
+                <td style='padding:8px 12px;font-size:11px;border-bottom:1px solid #000;'>Advance Tax ({$advTaxPct}%)</td>
+                <td style='padding:8px 12px;text-align:right;font-size:11px;border-bottom:1px solid #000;'>Rs ".fmt($advTaxAmt)."</td>
             </tr>
             <tr>
-                <td style='padding:10px 12px;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Net Total</td>
-                <td style='padding:10px 12px;text-align:right;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Rs ".fmt($order['total'])."</td>
+                <td style='padding:10px 12px;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Grand Total</td>
+                <td style='padding:10px 12px;text-align:right;font-size:12px;font-weight:bold;border-top:2px solid #000;'>Rs ".fmt($grandTotal)."</td>
             </tr>
+            {$paidRows}
         </table>
     </td>
 </tr>
@@ -354,20 +317,19 @@ $html = "
 $options = new Options();
 $options->set('isRemoteEnabled', true);
 $options->set('isHtml5ParserEnabled', true);
-$options->set('defaultFont', 'Helvetica');
-$options->set('chroot', [realpath(__DIR__ . '/../')]);
+$options->set('defaultFont', 'Calibri');
+$options->set('isFontSubsettingEnabled', true);
 
 $dompdf = new Dompdf($options);
+
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'normal', 'style' => 'normal'], 'C:/Windows/Fonts/calibri.ttf');
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'bold', 'style' => 'normal'], 'C:/Windows/Fonts/calibrib.ttf');
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'normal', 'style' => 'italic'], 'C:/Windows/Fonts/calibrii.ttf');
+$dompdf->getFontMetrics()->registerFont(['family' => 'Calibri', 'weight' => 'bold', 'style' => 'italic'], 'C:/Windows/Fonts/calibriz.ttf');
+
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
-$pdfContent = $dompdf->output();
-file_put_contents($cacheFile, $pdfContent);
-
 if (ob_get_length()) ob_clean();
-header('Content-Type: application/pdf');
-header('Content-Length: ' . strlen($pdfContent));
-echo $pdfContent;
-
-
+$dompdf->stream('SaleOrder-' . $order['order_no'] . '.pdf', ['Attachment' => false]);

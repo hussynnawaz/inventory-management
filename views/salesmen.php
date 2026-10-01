@@ -13,7 +13,7 @@ ob_start();
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted small mb-0">Manage your salesmen. Total: <strong><?= $totalSalesmen ?></strong></p>
     <button type="button" onclick="openForm()" class="btn btn-primary btn-sm">
-        <?= icon('plus', 14, 'me-1') ?>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" class="me-1"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
         Add Salesman
     </button>
 </div>
@@ -65,8 +65,8 @@ ob_start();
                     <input type="hidden" name="id" id="f_id">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-medium">Salesman ID</label>
-                            <input type="text" id="f_salesman_id" class="form-control bg-light" readonly placeholder="Auto-generated">
+                            <label class="form-label small fw-medium">Salesman ID <span class="text-danger">*</span></label>
+                            <input type="text" name="salesman_id" id="f_salesman_id" required class="form-control" placeholder="e.g. SM-001">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-medium">Name <span class="text-danger">*</span></label>
@@ -102,11 +102,10 @@ function openForm(data) {
     document.getElementById('salesmanForm').reset();
     document.getElementById('f_id').value = '';
     document.getElementById('formTitle').textContent = 'Add Salesman';
-    document.getElementById('f_salesman_id').value = '';
     if (data) {
         document.getElementById('formTitle').textContent = 'Edit Salesman';
         document.getElementById('f_id').value = data.id;
-        document.getElementById('f_salesman_id').value = data.salesman_id || '';
+        document.getElementById('f_salesman_id').value = data.salesman_id;
         document.getElementById('f_name').value = data.name;
         document.getElementById('f_phone').value = data.phone || '';
         document.getElementById('f_cnic').value = data.cnic || '';
@@ -119,11 +118,11 @@ function openForm(data) {
 function submitForm() {
     var f = document.getElementById('salesmanForm');
     var data = {
-        action: 'save', id: f.id.value,
+        action: 'save', id: f.id.value, salesman_id: f.salesman_id.value,
         name: f.name.value, phone: f.phone.value, cnic: f.cnic.value, address: f.address.value
     };
-    if (!data.name.trim()) {
-        showModal('Error', 'Name is required.', 'error');
+    if (!data.salesman_id.trim() || !data.name.trim()) {
+        showModal('Error', 'Salesman ID and Name are required.', 'error');
         return;
     }
     fetch('/controllers/salesman_save.php', {
@@ -138,19 +137,17 @@ function submitForm() {
 }
 
 function doDelete(id, name) {
-    confirmModal('Delete Salesman', 'Delete salesman "' + name + '"? This cannot be undone.', 'Delete').then(ok => {
-        if (!ok) return;
-        fetch('/controllers/salesman_save.php', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ action: 'delete', id: id })
-        })
-        .then(r => r.json())
-        .then(d => {
-            if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
-            else { showModal('Error', d.message, 'error'); }
-        })
-        .catch(() => showModal('Error', 'Delete failed.', 'error'));
-    });
+    if (!confirm('Delete salesman "' + name + '"? This cannot be undone.')) return;
+    fetch('/controllers/salesman_save.php', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'delete', id: id })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { showModal('Success', d.message, 'success'); setTimeout(() => location.reload(), 800); }
+        else { showModal('Error', d.message, 'error'); }
+    })
+    .catch(() => showModal('Error', 'Delete failed.', 'error'));
 }
 </script>
 <?php

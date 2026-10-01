@@ -15,7 +15,10 @@ ob_start();
 ?>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted small mb-0">View all sale orders, history and generate PDF invoices.</p>
-    <a href="/views/sale_order_new.php" class="btn btn-primary btn-sm">New Sale Order</a>
+    <a href="/views/sale_order_new.php" class="btn btn-primary btn-sm fw-semibold">
+        <?= icon('plus', 16) ?>
+        New Sale Order
+    </a>
 </div>
 
 <div class="card card-table">
@@ -28,14 +31,15 @@ ob_start();
                     <th>Contact</th>
                     <th>Date</th>
                     <th class="text-end">Subtotal</th>
-                    <th class="text-end">Tax</th>
+                    <th class="text-end">Sales Tax</th>
+                    <th class="text-end">Advance Tax</th>
                     <th class="text-end">Total</th>
-                    <th class="text-center" style="width:120px">Actions</th>
+                    <th class="text-center" style="width:230px">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($orders)): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4">No sale orders yet.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">No sale orders yet.</td></tr>
                 <?php else: foreach ($orders as $o): ?>
                     <tr>
                         <td><span class="font-monospace fw-semibold"><?= e($o['order_no']) ?></span></td>
@@ -43,15 +47,19 @@ ob_start();
                         <td class="text-muted"><?= e($o['contact']) ?></td>
                         <td class="text-muted"><?= e($o['order_date']) ?></td>
                         <td class="text-end">Rs <?= number_format($o['subtotal'], 2) ?></td>
-                        <td class="text-end">Rs <?= number_format(($o['sales_tax_amt'] ?? 0) + ($o['advanced_tax_amt'] ?? 0), 2) ?></td>
+                        <td class="text-end">Rs <?= number_format($o['sales_tax_amt'] ?? 0, 2) ?></td>
+                        <td class="text-end">Rs <?= number_format($o['advanced_tax_amt'] ?? 0, 2) ?></td>
                         <td class="text-end fw-bold">Rs <?= number_format($o['total'], 2) ?></td>
                         <td class="text-center">
                             <div class="btn-group btn-group-sm">
-                                <a href="/controllers/sale_order_pdf.php?id=<?= $o['id'] ?>" target="_blank" class="btn btn-outline-danger" title="Download PDF">
-                                    <?= icon('file-text', 14) ?>
+                                <a href="/views/sale_order_new.php?edit=<?= $o['id'] ?>" class="btn btn-outline-warning fw-semibold" title="Edit Order">
+                                    <?= icon('edit', 16, 'me-1 align-middle') ?>Edit
                                 </a>
-                                <a href="/views/sale_order_view.php?id=<?= $o['id'] ?>" class="btn btn-outline-primary" title="View Details">
-                                    <?= icon('eye', 14) ?>
+                                <a href="/controllers/sale_order_pdf.php?id=<?= $o['id'] ?>" target="_blank" class="btn btn-outline-danger fw-semibold" title="Download PDF">
+                                    <?= icon('file-text', 16, 'me-1 align-middle') ?>PDF
+                                </a>
+                                <a href="/views/sale_order_view.php?id=<?= $o['id'] ?>" class="btn btn-outline-primary fw-semibold" title="View Details">
+                                    <?= icon('eye', 16, 'me-1 align-middle') ?>View
                                 </a>
                             </div>
                         </td>

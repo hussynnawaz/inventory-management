@@ -13,30 +13,74 @@ function fail(string $msg): void {
 }
 
 /**
- * Generate SKU from product name: MJ-{INITIALS}-{NUMBER}
- * "Nestle Mineral Water" → "MJ-NMW-01"
+ * Generate a clean, readable SKU from the product name.
+ * Handles brackets, parentheses, special characters, numbers, units.
+ * "Lazy Sassling Mini (100 ml)" -> "LSM100ML"
+ * "ABC Product 500ml" -> "AP500ML"
+ * "Product - Special Edition" -> "PSE"
  */
 function generate_sku(PDO $pdo, string $name): string {
     $stopWords = ['a','an','the','and','or','of','for','in','on','at','to','by','with','from'];
-    $words = preg_split('/[\s\-_]+/', trim($name));
+
+    // Remove brackets/parentheses but keep their content
+    $cleaned = preg_replace('/[\[\]\(\)\{\}]/', ' ', $name);
+    // Remove special characters except alphanumeric and spaces
+    $cleaned = preg_replace('/[^a-zA-Z0-9\s]/', ' ', $cleaned);
+    // Normalize whitespace
+    $cleaned = preg_replace('/\s+/', ' ', trim($cleaned));
+
+    $tokens = explode(' ', $cleaned);
     $initials = '';
-    foreach ($words as $w) {
-        $w = strtolower($w);
-        if (in_array($w, $stopWords, true) || $w === '') continue;
-        $initials .= strtoupper($w[0]);
-        if (strlen($initials) >= 3) break;
+    $numbers = '';
+
+    foreach ($tokens as $token) {
+        $token = trim($token);
+        if ($token === '') continue;
+        $lower = strtolower($token);
+        if (in_array($lower, $stopWords, true)) continue;
+
+        // If token is purely numeric, append as-is
+        if (preg_match('/^\d+$/', $token)) {
+            $numbers .= $token;
+            continue;
+        }
+
+        // If token has mixed letters+numbers (e.g. "500ml"), split
+        if (preg_match('/^(\d+)([a-zA-Z]+)$/', $token, $m)) {
+            $numbers .= $m[1];
+            $initials .= strtoupper($m[2]);
+            continue;
+        }
+        if (preg_match('/^([a-zA-Z]+)(\d+)$/', $token, $m)) {
+            $initials .= strtoupper($m[1][0]);
+            $numbers .= $m[2];
+            continue;
+        }
+
+        // Normal word: take first letter
+        $initials .= strtoupper($token[0]);
     }
-    if (strlen($initials) < 1) $initials = 'PRD';
-    $prefix = 'MJ-' . $initials . '-';
-    $stmt = $pdo->prepare("SELECT sku FROM products WHERE sku LIKE ? ORDER BY id DESC LIMIT 1");
-    $stmt->execute([$prefix . '%']);
-    $last = $stmt->fetchColumn();
-    if ($last && preg_match('/-(\d+)$/', $last, $m)) {
-        $next = (int)$m[1] + 1;
-    } else {
-        $next = 1;
+
+    if ($initials === '' && $numbers === '') {
+        $initials = 'PRD';
     }
-    return $prefix . str_pad($next, 2, '0', STR_PAD_LEFT);
+
+    $baseSku = $initials . $numbers;
+
+    // Check for collision and add numeric suffix if needed
+    $sku = $baseSku;
+    $chk = $pdo->prepare('SELECT id FROM products WHERE sku = ?');
+    $chk->execute([$sku]);
+    if ($chk->fetch()) {
+        $suffix = 2;
+        do {
+            $sku = $baseSku . $suffix;
+            $chk->execute([$sku]);
+            $suffix++;
+        } while ($chk->fetch());
+    }
+
+    return $sku;
 }
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -45,7 +89,7 @@ if (!is_array($input)) {
 }
 $action = $input['action'] ?? '';
 
-// ── Save (create or update product) ──
+// -- Save (create or update product) --
 if ($action === 'save') {
     $id        = (int)($input['id'] ?? 0);
     $name      = trim($input['name'] ?? '');
@@ -92,7 +136,7 @@ if ($action === 'save') {
     exit;
 }
 
-// ── Update Stock (adjust quantity) ──
+// -- Update Stock (adjust quantity) --
 if ($action === 'update_stock') {
     $id      = (int)($input['id'] ?? 0);
     $mode    = $input['mode'] ?? 'set'; // 'set', 'add', 'subtract'
@@ -124,7 +168,7 @@ if ($action === 'update_stock') {
     exit;
 }
 
-// ── Delete ──
+// -- Delete --
 if ($action === 'delete') {
     $id = (int)($input['id'] ?? 0);
     if ($id <= 0) fail('Invalid product.');
@@ -133,13 +177,13 @@ if ($action === 'delete') {
     $chk = $pdo->prepare('SELECT COUNT(*) FROM sale_items WHERE product_id = ?');
     $chk->execute([$id]);
     if ((int)$chk->fetchColumn() > 0) {
-        fail('Cannot delete product — it has associated sales records.');
+        fail('Cannot delete product - it has associated sales records.');
     }
 
     $chk2 = $pdo->prepare('SELECT COUNT(*) FROM sale_order_items WHERE product_id = ?');
     $chk2->execute([$id]);
     if ((int)$chk2->fetchColumn() > 0) {
-        fail('Cannot delete product — it has associated sale order records.');
+        fail('Cannot delete product - it has associated sale order records.');
     }
 
     try {

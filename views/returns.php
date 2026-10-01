@@ -200,16 +200,23 @@ function selectSaleOrder(orderId, orderNo) {
         .then(r => r.json())
         .then(items => {
             returnItems = [];
+            let skipped = 0;
             items.forEach(it => {
+                const returnable = parseInt(it.returnable_quantity) || 0;
+                if (returnable <= 0) { skipped++; return; }
                 returnItems.push({
                     product_id: it.product_id,
                     name: it.product_name,
                     sku: it.sku || '',
                     qty: 1,
+                    maxQty: returnable,
                     refund_price: parseFloat(it.price) || 0,
                     reason: 'Customer return'
                 });
             });
+            if (!returnItems.length && skipped) {
+                showModal('Nothing to Return', 'All items on this sale order have already been returned.', 'error');
+            }
             renderReturnRows();
         });
 }
@@ -252,10 +259,13 @@ function renderReturnRows() {
     returnItems.forEach((it, idx) => {
         const lineTotal = it.qty * it.refund_price;
         grandTotal += lineTotal;
+        const hasMax = typeof it.maxQty !== 'undefined';
+        const maxAttr = hasMax ? ' max="' + it.maxQty + '"' : '';
+        const maxHint = hasMax ? '<small class="text-muted d-block" style="font-size:.7rem">Max ' + it.maxQty + '</small>' : '';
         const tr = document.createElement('tr');
         tr.innerHTML =
             '<td><div class="fw-semibold small">'+esc(it.name)+'</div><small class="text-muted font-monospace">'+esc(it.sku || '')+'</small></td>' +
-            '<td><input type="number" min="1" value="'+it.qty+'" onchange="updateReturnItem('+idx+', \'qty\', this.value)" class="form-control form-control-sm text-center"></td>' +
+            '<td><input type="number" min="1"'+maxAttr+' value="'+it.qty+'" onchange="updateReturnItem('+idx+', \'qty\', this.value)" class="form-control form-control-sm text-center">'+maxHint+'</td>' +
             '<td><input type="number" min="0" step="0.01" value="'+it.refund_price+'" onchange="updateReturnItem('+idx+', \'refund_price\', this.value)" class="form-control form-control-sm fw-semibold"></td>' +
             '<td><input type="text" value="'+esc(it.reason)+'" onchange="updateReturnItem('+idx+', \'reason\', this.value)" placeholder="Defective, wrong item..." class="form-control form-control-sm"></td>' +
             '<td class="text-end fw-bold text-danger">'+fmt(lineTotal)+'</td>' +
@@ -266,7 +276,15 @@ function renderReturnRows() {
 }
 
 function updateReturnItem(idx, field, val) {
-    if (field === 'qty') returnItems[idx].qty = Math.max(1, parseInt(val) || 1);
+    if (field === 'qty') {
+        let qty = Math.max(1, parseInt(val) || 1);
+        const maxQty = returnItems[idx].maxQty;
+        if (typeof maxQty !== 'undefined' && qty > maxQty) {
+            showModal('Return Limit Exceeded', 'Cannot return more than ' + maxQty + ' unit(s) of ' + returnItems[idx].name + '.', 'error');
+            qty = maxQty;
+        }
+        returnItems[idx].qty = qty;
+    }
     if (field === 'refund_price') returnItems[idx].refund_price = Math.max(0, parseFloat(val) || 0);
     if (field === 'reason') returnItems[idx].reason = val;
     renderReturnRows();

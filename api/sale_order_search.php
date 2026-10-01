@@ -1,6 +1,8 @@
 <?php
 // GET ?q=search_term -> JSON list of matching sale orders for return processing.
+require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
+require_login();
 
 header('Content-Type: application/json');
 
@@ -12,7 +14,7 @@ if ($q === '') {
 }
 
 $stmt = $pdo->prepare('
-    SELECT id, order_no, customer_name, total, order_date
+    SELECT id, order_no, customer_id, customer_name, total, order_date
     FROM sale_orders
     WHERE order_no LIKE ? OR customer_name LIKE ?
     ORDER BY created_at DESC

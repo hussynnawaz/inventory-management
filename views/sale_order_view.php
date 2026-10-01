@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/../includes/invoice_calculations.php';
 require_login();
 
 $id = (int)($_GET['id'] ?? 0);
@@ -21,139 +22,143 @@ $items = $pdo->prepare('
 $items->execute([$id]);
 $items = $items->fetchAll();
 
+// Get salesman name
+$salesmanName = $order['salesman'] ?? '';
+if (!empty($order['salesman_id'])) {
+    $smStmt = $pdo->prepare('SELECT name FROM salesmen WHERE id = ?');
+    $smStmt->execute([$order['salesman_id']]);
+    $sm = $smStmt->fetchColumn();
+    if ($sm) $salesmanName = $sm;
+}
+
+// Authoritative totals straight from the stored order row (shared with the PDF)
+$t = invoice_totals_from_order($order);
+$subtotal = $t['subtotal'];
+$taxPct = $t['sales_tax_pct'];
+$salesTaxAmt = $t['sales_tax_amt'];
+$afterSalesTax = $t['after_sales_tax'];
+$advTaxPct = $t['advanced_tax_pct'];
+$advTaxAmt = $t['advanced_tax_amt'];
+$grandTotal = $t['net_total'];
+$itemTaxes = invoice_line_sales_taxes($items, $taxPct, $salesTaxAmt);
+$amountPaid = invoice_order_amount_paid($pdo, (int)$order['id']);
+$amountRemaining = invoice_amount_remaining($grandTotal, $amountPaid);
+$paymentStatus = invoice_payment_status($grandTotal, $amountPaid);
+
 ob_start();
 ?>
-<div class="mb-4">
-    <a href="/views/sales.php" class="btn btn-sm btn-outline-secondary">
-        <?= icon('arrow-left', 14) ?>
-        Back to Sales
-    </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="fw-bold mb-0">Sale Order: <?= e($order['order_no']) ?></h5>
+        <small class="text-muted">Date: <?= e($order['order_date']) ?></small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/views/sale_order_new.php?edit=<?= $order['id'] ?>" class="btn btn-warning btn-sm fw-semibold">
+            <?= icon('edit', 14) ?> Edit Order
+        </a>
+        <a href="/controllers/sale_order_pdf.php?id=<?= $order['id'] ?>" target="_blank" class="btn btn-danger btn-sm">
+            <?= icon('file-text', 14) ?> Download PDF
+        </a>
+        <a href="/views/sales.php" class="btn btn-outline-secondary btn-sm">Back to Sales</a>
+    </div>
 </div>
 
-<div class="row g-4">
-    <!-- Order Info -->
-    <div class="col-lg-8">
-        <div class="card mb-4">
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h5 class="fw-bold mb-1"><?= e($order['order_no']) ?></h5>
-                        <small class="text-muted"><?= e($order['order_date']) ?></small>
-                    </div>
-                    <a href="/controllers/sale_order_pdf.php?id=<?= $order['id'] ?>" target="_blank" class="btn btn-danger btn-sm">
-                        <?= icon('file-text', 14, 'me-1') ?>
-                        Download PDF
-                    </a>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                            <?php
-                            $taxPct = (float)$order['sales_tax_pct'];
-                            $advTaxPct = (float)($order['advanced_tax_pct'] ?? 0);
-                            $totalTaxPct = $taxPct + $advTaxPct + ($taxPct * $advTaxPct / 100);
-                            ?>
-                            <thead class="bg-light">
-                            <tr>
-                                <th class="small fw-semibold">#</th>
-                                <th class="small fw-semibold">Product</th>
-                                <th class="small fw-semibold">SKU</th>
-                                <th class="small fw-semibold text-center">Qty</th>
-                                <th class="small fw-semibold text-end">Unit Price</th>
-                                <th class="small fw-semibold text-end">Tax (<?= round($totalTaxPct, 2) ?>%)</th>
-                                <th class="small fw-semibold text-end">Line Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $i = 1;
-                            foreach ($items as $it):
-                                $lineTotal = (float)$it['line_total'];
-                                $itemTax = round($lineTotal * $totalTaxPct / 100, 2);
-                            ?>
-                            <tr>
-                                <td><?= $i++ ?></td>
-                                <td class="fw-semibold"><?= e($it['product_name']) ?></td>
-                                <td class="font-monospace text-muted"><?= e($it['sku'] ?? '-') ?></td>
-                                <td class="text-center"><?= $it['quantity'] ?></td>
-                                <td class="text-end">Rs <?= number_format($it['price'], 2) ?></td>
-                                <td class="text-end">Rs <?= number_format($itemTax, 2) ?></td>
-                                <td class="text-end fw-bold">Rs <?= number_format($lineTotal, 2) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                <h6 class="fw-bold mb-3">Customer Information</h6>
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted ps-0" style="width:120px">Customer Code:</td><td class="fw-semibold"><?= e($order['customer_code'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">Name:</td><td class="fw-semibold"><?= e($order['customer_name'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">Contact:</td><td><?= e($order['contact'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">Address:</td><td><?= e($order['address'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">Destination:</td><td><?= e($order['destination'] ?: '-') ?></td></tr>
+                </table>
             </div>
         </div>
     </div>
-
-    <!-- Summary -->
-    <div class="col-lg-4">
-        <!-- Customer Card -->
-        <div class="card mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
             <div class="card-body">
-                <h6 class="fw-bold mb-3">Customer</h6>
-                <div class="mb-2">
-                    <small class="text-muted">Code</small>
-                    <div class="fw-semibold font-monospace"><?= e($order['customer_code'] ?: '-') ?></div>
-                </div>
-                <div class="mb-2">
-                    <small class="text-muted">Name</small>
-                    <div class="fw-semibold"><?= e($order['customer_name'] ?: '-') ?></div>
-                </div>
-                <div class="mb-2">
-                    <small class="text-muted">Contact</small>
-                    <div><?= e($order['contact'] ?: '-') ?></div>
-                </div>
-                <div class="mb-2">
-                    <small class="text-muted">Destination</small>
-                    <div><?= e($order['destination'] ?: '-') ?></div>
-                </div>
-                <div class="mb-2">
-                    <small class="text-muted">Salesman</small>
-                    <div><?php
-                        $smName = $order['salesman'] ?? '';
-                        if (!empty($order['salesman_id'])) {
-                            $smStmt = $pdo->prepare('SELECT name FROM salesmen WHERE id = ?');
-                            $smStmt->execute([$order['salesman_id']]);
-                            $sm = $smStmt->fetchColumn();
-                            if ($sm) $smName = $sm;
-                        }
-                        echo e($smName ?: '-');
-                    ?></div>
-                </div>
-                <div class="mb-0">
-                    <small class="text-muted">Address</small>
-                    <div><?= e($order['address'] ?: '-') ?></div>
-                </div>
+                <h6 class="fw-bold mb-3">Tax & Salesman Information</h6>
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted ps-0" style="width:120px">NTN No:</td><td class="fw-semibold"><?= e($order['ntn_no'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">Sales Tax No:</td><td><?= e($order['sales_tax_no'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">CNIC:</td><td><?= e($order['cnic'] ?: '-') ?></td></tr>
+                    <tr><td class="text-muted ps-0">Salesman:</td><td class="fw-semibold text-primary"><?= e($salesmanName ?: '-') ?></td></tr>
+                </table>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- Billing Summary -->
-        <div class="card mb-4">
+<div class="card mb-4">
+    <div class="card-header bg-white py-3"><h6 class="fw-bold mb-0">Order Line Items</h6></div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>SKU</th>
+                    <th class="text-end">Unit Price</th>
+                    <th class="text-center">Quantity</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Sales Tax</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach (array_values($items) as $idx => $it):
+                    $lineTotal = round((float)$it['line_total'], 2);
+                    $itemSalesTax = $itemTaxes[$idx];
+                ?>
+                <tr>
+                    <td class="fw-semibold"><?= e($it['product_name']) ?></td>
+                    <td><span class="font-monospace text-muted small"><?= e($it['sku'] ?: '-') ?></span></td>
+                    <td class="text-end">Rs <?= number_format($it['price'], 2) ?></td>
+                    <td class="text-center fw-semibold"><?= (int)$it['quantity'] ?></td>
+                    <td class="text-end fw-bold">Rs <?= number_format($lineTotal, 2) ?></td>
+                    <td class="text-end text-muted">Rs <?= number_format($itemSalesTax, 2) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5 offset-md-7">
+        <div class="card">
             <div class="card-body">
-                <h6 class="fw-bold mb-3">Billing Summary</h6>
-                <div class="d-flex justify-content-between small mb-2">
+                <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Subtotal</span>
-                    <span class="fw-semibold">Rs <?= number_format($order['subtotal'], 2) ?></span>
+                    <span class="fw-semibold">Rs <?= number_format($subtotal, 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Sales Tax (<?= $taxPct ?>%)</span>
+                    <span>Rs <?= number_format($salesTaxAmt, 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <span class="text-muted">Advance Tax (<?= $advTaxPct ?>%)</span>
+                    <span>Rs <?= number_format($advTaxAmt, 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between pt-2 border-top mb-2">
+                    <span class="fs-5 fw-bold">Grand Total</span>
+                    <span class="fs-5 fw-bold text-primary">Rs <?= number_format($grandTotal, 2) ?></span>
+                </div>
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">Amount Paid</span>
+                    <span class="fw-semibold">Rs <?= number_format($amountPaid, 2) ?></span>
                 </div>
                 <div class="d-flex justify-content-between small mb-2">
-                    <span class="text-muted">Sales Tax (<?= $order['sales_tax_pct'] ?>%)</span>
-                    <span class="fw-semibold">Rs <?= number_format($order['sales_tax_amt'], 2) ?></span>
+                    <span class="text-muted">Amount Remaining</span>
+                    <span class="fw-semibold">Rs <?= number_format($amountRemaining, 2) ?></span>
                 </div>
-                <div class="d-flex justify-content-between small mb-3">
-                    <span class="text-muted">Advanced Tax (<?= $order['advanced_tax_pct'] ?? '0' ?>%)</span>
-                    <span class="fw-semibold">Rs <?= number_format($order['advanced_tax_amt'] ?? 0, 2) ?></span>
-                </div>
-                <hr>
-                <div class="d-flex justify-content-between">
-                    <span class="fw-bold">Net Total</span>
-                    <span class="fs-5 fw-bold text-primary">Rs <?= number_format($order['total'], 2) ?></span>
-                </div>
+                <div class="small text-muted">Payment status: <span class="fw-semibold text-capitalize"><?= e($paymentStatus) ?></span></div>
             </div>
         </div>
     </div>
 </div>
+
 <?php
-render_page('Order Details - ' . $order['order_no'], ob_get_clean());
+render_page('View Sale Order', ob_get_clean());

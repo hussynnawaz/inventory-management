@@ -1,9 +1,11 @@
 <?php
 // POST handler for recording customer payments.
 // Input JSON: customer_id, sale_order_id (optional), amount, payment_method,
+//   payment_date (the day the customer actually paid),
 //   collector_name (cash), transaction_id + bank_channel (bank)
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/invoice_calculations.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -30,12 +32,24 @@ $collector    = trim($input['collector_name'] ?? '');
 $txnId        = trim($input['transaction_id'] ?? '');
 $bankChannel  = trim($input['bank_channel'] ?? '');
 $notes        = trim($input['notes'] ?? '');
+$paymentDate  = trim($input['payment_date'] ?? '');
 
 if ($customerId <= 0) pay_fail('Invalid customer.');
 if ($amount <= 0) pay_fail('Payment amount must be greater than zero.');
-if (!in_array($method, ['cash', 'bank'], true)) pay_fail('Invalid payment method.');
+if (!in_array($method, ['cash', 'bank', 'cheque', 'card', 'other'], true)) pay_fail('Invalid payment method.');
 if ($method === 'cash' && $collector === '') pay_fail('Collector name is required for cash payments.');
-if ($method === 'bank' && ($txnId === '' || $bankChannel === '')) pay_fail('Transaction ID and banking channel are required for bank payments.');
+if (in_array($method, ['bank', 'cheque', 'card'], true) && ($txnId === '' || $bankChannel === '')) pay_fail('Transaction ID and banking channel are required for bank payments.');
+
+// Payment Date = the day the customer actually paid. It is NOT the invoice
+// date. When the caller omits it we default to today (server local time,
+// same clock the rest of the app uses).
+if ($paymentDate === '') {
+    $paymentDate = date('Y-m-d');
+} else {
+    $normalized = invoice_normalize_date($paymentDate);
+    if ($normalized === null) pay_fail('Invalid payment date. Use a real calendar date.');
+    $paymentDate = $normalized;
+}
 
 try {
     $pdo->beginTransaction();
@@ -79,25 +93,24 @@ try {
         $previousBalance = $totalOrders - $totalPaid;
     }
 
-    if ($amount > round($previousBalance + 0.01, 2)) {
+    if ($amount > round($previousBalance + 0.005, 2)) {
         $pdo->rollBack();
         pay_fail('Payment amount (Rs ' . number_format($amount, 2) . ') exceeds outstanding balance (Rs ' . number_format($previousBalance, 2) . ').');
     }
 
-    $remainingBalance = round($previousBalance - $amount, 2);
-    if ($remainingBalance < 0) $remainingBalance = 0;
+    $remainingBalance = round(max(0, $previousBalance - $amount), 2);
 
     // Insert payment
     $stmt = $pdo->prepare('INSERT INTO customer_payments
-        (receipt_no, customer_id, sale_order_id, payment_method, amount, previous_balance, remaining_balance,
+        (receipt_no, customer_id, sale_order_id, payment_method, payment_date, amount, previous_balance, remaining_balance,
          collector_name, transaction_id, bank_channel, notes, user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
     $stmt->execute([
-        $receiptNo, $customerId, $saleOrderId, $method, $amount,
+        $receiptNo, $customerId, $saleOrderId, $method, $paymentDate, $amount,
         $previousBalance, $remainingBalance,
-        $method === 'cash' ? $collector : null,
-        $method === 'bank' ? $txnId : null,
-        $method === 'bank' ? $bankChannel : null,
+        ($method === 'cash') ? $collector : null,
+        ($method === 'cash') ? null : $txnId,
+        ($method === 'cash') ? null : $bankChannel,
         $notes ?: null,
         current_user()['id']
     ]);
@@ -112,6 +125,8 @@ try {
         'payment_id'       => $paymentId,
         'receipt_no'       => $receiptNo,
         'amount'           => $amount,
+        'payment_date'     => $paymentDate,
+        'payment_date_display' => invoice_fmt_date($paymentDate),
         'previous_balance' => $previousBalance,
         'remaining_balance'=> $remainingBalance,
     ]);

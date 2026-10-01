@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/invoice_calculations.php';
 require_login();
 
 header('Content-Type: application/json');
@@ -53,7 +54,7 @@ if ($smId > 0) {
 $subtotal = 0;
 foreach ($items as $it) {
     $qty = (int)($it['qty'] ?? 0);
-    $price = (float)($it['price'] ?? 0);
+    $price = round((float)($it['price'] ?? 0), 2);
     if ($qty <= 0) fail('Item quantity must be greater than zero.');
     if ($price < 0) fail('Item price cannot be negative.');
     $pid = (int)($it['product_id'] ?? 0);
@@ -68,15 +69,21 @@ foreach ($items as $it) {
         $pname = $nameStmt->fetchColumn() ?: 'Product';
         fail("Insufficient stock for {$pname}. Available: {$stock}, Requested: {$qty}.");
     }
-    $subtotal += $qty * $price;
+    $subtotal += invoice_line_total($price, $qty);
 }
 
-$salesTaxPct = (float)($input['sales_tax_pct'] ?? 0);
-$salesTaxAmt = round($subtotal * $salesTaxPct / 100, 2);
-$advancedTaxPct = (float)($input['advanced_tax_pct'] ?? 0);
-$taxableAfterSalesTax = round($subtotal + $salesTaxAmt, 2);
-$advancedTaxAmt = round($taxableAfterSalesTax * $advancedTaxPct / 100, 2);
-$total = round($taxableAfterSalesTax + $advancedTaxAmt, 2);
+// Server-side authoritative tax calculation
+$totals = invoice_calculate_totals(
+    $subtotal,
+    (float)($input['sales_tax_pct'] ?? 0),
+    (float)($input['advanced_tax_pct'] ?? 0)
+);
+$subtotal = $totals['subtotal'];
+$salesTaxPct = $totals['sales_tax_pct'];
+$salesTaxAmt = $totals['sales_tax_amt'];
+$advancedTaxPct = $totals['advanced_tax_pct'];
+$advancedTaxAmt = $totals['advanced_tax_amt'];
+$total = $totals['net_total'];
 
 try {
     $pdo->beginTransaction();
@@ -100,21 +107,28 @@ try {
     $itemStmt = $pdo->prepare('INSERT INTO sale_order_items
         (sale_order_id, product_id, product_name, quantity, price, line_total)
         VALUES (?,?,?,?,?,?)');
-    $stockStmt = $pdo->prepare('UPDATE products SET quantity = quantity - ? WHERE id = ?');
+    // Guarded atomic deduction: the row is only decremented if it still holds
+    // enough stock, so two users selling the same product at the same time can
+    // never drive stock negative. A concurrent sale that wins the race makes
+    // this affect 0 rows and rolls the whole invoice back.
+    $stockStmt = $pdo->prepare('UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?');
     foreach ($items as $it) {
         $pid = (int)($it['product_id'] ?? 0);
         $qty = (int)($it['qty'] ?? 0);
-        $price = (float)($it['price'] ?? 0);
+        $price = round((float)($it['price'] ?? 0), 2);
         $pname = $pdo->prepare('SELECT name FROM products WHERE id = ?');
         $pname->execute([$pid]);
         $name = $pname->fetchColumn() ?: '';
-        $itemStmt->execute([$orderId, $pid, $name, $qty, $price, $qty * $price]);
+        $itemStmt->execute([$orderId, $pid, $name, $qty, $price, invoice_line_total($price, $qty)]);
         // Deduct stock
-        $stockStmt->execute([$qty, $pid]);
+        $stockStmt->execute([$qty, $pid, $qty]);
+        if ($stockStmt->rowCount() !== 1) {
+            throw new RuntimeException("Insufficient stock for {$name}. Stock changed while saving this order.");
+        }
     }
 
     $pdo->commit();
-    echo json_encode(['success' => true, 'order_id' => $orderId, 'order_no' => $orderNo, 'message' => 'Sale order created successfully.']);
+    echo json_encode(['success' => true, 'order_id' => $orderId, 'order_no' => $orderNo, 'message' => 'Sale order created successfully.', 'totals' => $totals]);
 } catch (Exception $e) {
     $pdo->rollBack();
     fail('Could not save sale order: ' . $e->getMessage());

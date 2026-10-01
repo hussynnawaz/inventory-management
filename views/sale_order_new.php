@@ -5,13 +5,27 @@ require_once __DIR__ . '/../includes/layout.php';
 require_once __DIR__ . '/../includes/modal.php';
 require_login();
 
+$editId = (int)($_GET['edit'] ?? 0);
+$isEdit = $editId > 0;
+$editOrder = null;
+
+if ($isEdit) {
+    $stmt = $pdo->prepare('SELECT * FROM sale_orders WHERE id = ?');
+    $stmt->execute([$editId]);
+    $editOrder = $stmt->fetch();
+    if (!$editOrder) {
+        header('Location: /views/sales.php');
+        exit;
+    }
+}
+
 $products = $pdo->query('SELECT id, name, sale_price, quantity FROM products ORDER BY name ASC')->fetchAll();
 $categories = array_unique(array_filter(array_column(
     $pdo->query('SELECT category FROM products WHERE category != "" ORDER BY category ASC')->fetchAll(),
     'category'
 )));
 $now = date('Y-m-d H:i:s');
-$previewNo = 'SO-' . date('Ymd') . '-' . str_pad((int)$pdo->query('SELECT COUNT(*)+1 FROM sale_orders')->fetchColumn(), 4, '0', STR_PAD_LEFT);
+$previewNo = $isEdit ? $editOrder['order_no'] : ('SO-' . date('Ymd') . '-' . str_pad((int)$pdo->query('SELECT COUNT(*)+1 FROM sale_orders')->fetchColumn(), 4, '0', STR_PAD_LEFT));
 
 ob_start();
 ?>
@@ -30,6 +44,15 @@ ob_start();
     .ac-empty { padding:1rem; text-align:center; color:#94a3b8; font-size:.85rem; }
     .ac-add-new { padding:.65rem .85rem; cursor:pointer; font-size:.85rem; display:flex; align-items:center; gap:.5rem; color:#3b82f6; font-weight:600; border-top:1px solid #e2e8f0; transition:background .1s; }
     .ac-add-new:hover { background:#eff6ff; }
+    /* Prevent mouse wheel scroll from modifying numeric inputs */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
 </style>
 
 <div class="mb-3">
@@ -39,18 +62,22 @@ ob_start();
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div class="d-flex align-items-center gap-3">
                     <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
-                        <?= icon('clipboard', 18) ?>
+                        <?= icon($isEdit ? 'edit' : 'clipboard', 18) ?>
                     </div>
                     <div>
-                        <h6 class="fw-bold mb-0">New Sale Order</h6>
-                        <small class="text-muted">Order: <span class="font-monospace fw-semibold"><?= e($previewNo) ?></span> &middot; <?= e($now) ?></small>
+                        <h6 class="fw-bold mb-0"><?= $isEdit ? 'Edit Sale Order' : 'New Sale Order' ?></h6>
+                        <small class="text-muted">Order: <span class="font-monospace fw-semibold"><?= e($previewNo) ?></span> &middot; <?= e($isEdit ? $editOrder['order_date'] : $now) ?></small>
                     </div>
                 </div>
+                <?php if ($isEdit): ?>
+                    <a href="/views/sales.php" class="btn btn-sm btn-outline-secondary">Back to Sales</a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 
     <form id="saleForm">
+        <input type="hidden" name="order_id" id="order_id" value="<?= $isEdit ? $editOrder['id'] : '' ?>">
         <div class="row g-4">
             <!-- Left Side (Col 8) -->
             <div class="col-lg-8">
@@ -113,7 +140,7 @@ ob_start();
                         <!-- Customer Search -->
                         <div class="mb-3 ac-wrap">
                             <label class="form-label small fw-medium">Search Customer</label>
-                            <input type="text" id="customer_code" autocomplete="off" placeholder="Type code, name or contact..." class="form-control" style="font-size:.85rem">
+                            <input type="text" id="customer_code" autocomplete="off" placeholder="Type code, name or contact..." class="form-control" style="font-size:.85rem" value="<?= e($isEdit ? $editOrder['customer_code'] : '') ?>">
                             <div id="custAcList" class="ac-dropdown d-none"></div>
                         </div>
 
@@ -129,35 +156,35 @@ ob_start();
                         <!-- Customer Fields -->
                         <div class="mb-2">
                             <label class="form-label small text-muted fw-medium">Customer Name</label>
-                            <input type="text" name="customer_name" id="customer_name" readonly class="form-control field-locked" placeholder="--">
+                            <input type="text" name="customer_name" id="customer_name" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['customer_name'] : '') ?>">
                         </div>
                         <div class="mb-2">
                             <label class="form-label small text-muted fw-medium">Contact</label>
-                            <input type="text" name="contact" id="contact" readonly class="form-control field-locked" placeholder="--">
+                            <input type="text" name="contact" id="contact" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['contact'] : '') ?>">
                         </div>
                         <div class="mb-2">
                             <label class="form-label small text-muted fw-medium">Address</label>
-                            <input type="text" name="address" id="address" readonly class="form-control field-locked" placeholder="--">
+                            <input type="text" name="address" id="address" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['address'] : '') ?>">
                         </div>
                         <div class="mb-3">
                             <label class="form-label small text-muted fw-medium">Destination</label>
-                            <input type="text" name="destination" id="destination" readonly class="form-control field-locked" placeholder="--">
+                            <input type="text" name="destination" id="destination" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['destination'] : '') ?>">
                         </div>
 
                         <!-- Tax fields -->
                         <div class="row g-2 mb-2">
                             <div class="col-6">
                                 <label class="form-label small text-muted fw-medium">NTN No</label>
-                                <input type="text" name="ntn_no" id="ntn_no" readonly class="form-control field-locked" placeholder="--">
+                                <input type="text" name="ntn_no" id="ntn_no" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['ntn_no'] : '') ?>">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small text-muted fw-medium">Sales Tax No</label>
-                                <input type="text" name="sales_tax_no" id="sales_tax_no" readonly class="form-control field-locked" placeholder="--">
+                                <input type="text" name="sales_tax_no" id="sales_tax_no" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['sales_tax_no'] : '') ?>">
                             </div>
                         </div>
                         <div class="mb-0">
                             <label class="form-label small text-muted fw-medium">CNIC</label>
-                            <input type="text" name="cnic" id="cnic" readonly class="form-control field-locked" placeholder="--">
+                            <input type="text" name="cnic" id="cnic" readonly class="form-control field-locked" placeholder="--" value="<?= e($isEdit ? $editOrder['cnic'] : '') ?>">
                         </div>
                     </div>
                 </div>
@@ -170,7 +197,7 @@ ob_start();
                             <input type="text" id="salesmanSearch" autocomplete="off" placeholder="Search by ID or name..." class="form-control" style="font-size:.85rem">
                             <div id="smAcList" class="ac-dropdown d-none"></div>
                         </div>
-                        <input type="hidden" name="salesman_id" id="salesman_id">
+                        <input type="hidden" name="salesman_id" id="salesman_id" value="<?= $isEdit ? $editOrder['salesman_id'] : '' ?>">
                         <div id="salesmanInfo" class="d-none mt-2 p-2 bg-light rounded-3">
                             <div class="fw-bold small" id="sm_name">-</div>
                             <small class="text-muted" id="sm_detail">-</small>
@@ -187,14 +214,14 @@ ob_start();
                             <div class="col-6">
                                 <label class="form-label small fw-medium">Sales Tax (%)</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" min="0" step="0.1" id="sales_tax_pct" value="0" class="form-control fw-semibold">
+                                    <input type="number" min="0" max="100" step="0.01" id="sales_tax_pct" value="<?= $isEdit ? (float)$editOrder['sales_tax_pct'] : 0 ?>" class="form-control fw-semibold" onwheel="this.blur()">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-medium">Advanced Tax (%)</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="number" min="0" step="0.1" id="advanced_tax_pct" value="0" class="form-control fw-semibold">
+                                    <input type="number" min="0" max="100" step="0.01" id="advanced_tax_pct" value="<?= $isEdit ? (float)($editOrder['advanced_tax_pct'] ?? 0) : 0 ?>" class="form-control fw-semibold" onwheel="this.blur()">
                                     <span class="input-group-text">%</span>
                                 </div>
                             </div>
@@ -209,16 +236,16 @@ ob_start();
                                 <span id="stRow" class="fw-semibold">Rs 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between small mb-3">
-                                <span class="text-muted">Advanced Tax</span>
+                                <span class="text-muted">Advance Tax</span>
                                 <span id="atRow" class="fw-semibold">Rs 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center" style="border-top:2px dashed #dee2e6;padding-top:.75rem;">
-                                <span class="fw-bold">Total</span>
+                                <span class="fw-bold">Grand Total</span>
                                 <span id="netTotal" class="fs-5 fw-bold text-primary">Rs 0.00</span>
                             </div>
                         </div>
                         <div class="d-grid gap-2">
-                            <button type="submit" id="submitBtn" class="btn btn-primary fw-semibold py-2">Save Order</button>
+                            <button type="submit" id="submitBtn" class="btn btn-primary fw-semibold py-2"><?= $isEdit ? 'Update Order' : 'Save Order' ?></button>
                             <a href="/views/sales.php" class="btn btn-light fw-semibold">Cancel</a>
                         </div>
                     </div>
@@ -258,15 +285,15 @@ ob_start();
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-medium">Purchase Price</label>
-                            <input type="number" min="0" step="0.01" value="0" id="ap_cost_price" class="form-control">
+                            <input type="number" min="0" step="0.01" value="0" id="ap_cost_price" class="form-control" onwheel="this.blur()">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-medium">Selling Price <span class="text-danger">*</span></label>
-                            <input type="number" min="0" step="0.01" value="0" id="ap_sale_price" required class="form-control">
+                            <input type="number" min="0" step="0.01" value="0" id="ap_sale_price" required class="form-control" onwheel="this.blur()">
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-medium">Initial Stock</label>
-                            <input type="number" min="0" step="1" value="0" id="ap_quantity" class="form-control">
+                            <input type="number" min="0" step="1" value="0" id="ap_quantity" class="form-control" onwheel="this.blur()">
                         </div>
                     </div>
                 </form>
@@ -331,32 +358,71 @@ ob_start();
 
 <script>
 const PRODUCTS = <?= json_encode(array_map(fn($p) => ['id' => $p['id'], 'name' => $p['name'], 'price' => (float)$p['sale_price'], 'qty' => (int)$p['quantity']], $products), JSON_HEX_TAG | JSON_HEX_APOS) ?>;
+const IS_EDIT = <?= $isEdit ? 'true' : 'false' ?>;
+const EDIT_ID = <?= $editId ?>;
 
-function fmt(n) { return 'Rs ' + Number(n).toLocaleString('en-PK', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function round2(n) { return Math.round(n * 100) / 100; }
+function fmt(n) { return 'Rs ' + round2(n).toLocaleString('en-PK', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 let items = [];
 let selectedCustomer = null;
 let selectedSalesman = null;
 
+// Effective stock available for this edit.
+// For a brand new sale that is simply the product's current stock.
+// For an EXISTING sale the units this invoice already consumed are given back
+// as headroom, so 40 -> 45 is allowed while only 10 are in stock:
+//     available_for_edit = current_stock + original_sale_quantity
+function availableStock(productId) {
+    const p = PRODUCTS.find(x => x.id === productId);
+    let stock = p ? p.qty : 0;
+    if (IS_EDIT) {
+        items.forEach(it => { if (it.id === productId) stock += it.qty; });
+    }
+    return stock;
+}
+
 let addProductModal = null;
 let addCustomerModal = null;
 
+// Prevent mouse wheel from changing input values globally for type=number
+document.addEventListener('wheel', function(e) {
+    if (document.activeElement && document.activeElement.type === 'number') {
+        document.activeElement.blur();
+    }
+}, { passive: true });
+
 // ── Calc (updates summary values WITHOUT rebuilding rows) ──
+// The tax formula lives ONLY on the server (includes/invoice_calculations.php).
+// This screen just asks /api/invoice_totals.php for the numbers to display, so
+// what is shown here is exactly what will be saved, shown in the invoice view
+// and printed on the PDF.
+let totalsTimer = null;
+let totalsReq = 0;
+function showTotals(t) {
+    document.getElementById('subtotal').textContent = fmt(t.subtotal);
+    document.getElementById('stRow').textContent = fmt(t.sales_tax_amt);
+    document.getElementById('atRow').textContent = fmt(t.advanced_tax_amt);
+    document.getElementById('netTotal').textContent = fmt(t.net_total);
+}
 function recalc() {
-    let subtotal = 0;
-    items.forEach(it => { subtotal += it.qty * it.price; });
-    const stPct = parseFloat(document.getElementById('sales_tax_pct').value) || 0;
-    const atPct = parseFloat(document.getElementById('advanced_tax_pct').value) || 0;
-    const stAmt = subtotal * stPct / 100;
-    const afterSalesTax = subtotal + stAmt;
-    const atAmt = afterSalesTax * atPct / 100;
-    const net = afterSalesTax + atAmt;
-    document.getElementById('subtotal').textContent = fmt(subtotal);
-    document.getElementById('stRow').textContent = fmt(stAmt);
-    document.getElementById('atRow').textContent = fmt(atAmt);
-    document.getElementById('netTotal').textContent = fmt(net);
     document.getElementById('itemsCounter').textContent = items.length + (items.length === 1 ? ' Item' : ' Items');
+    clearTimeout(totalsTimer);
+    totalsTimer = setTimeout(() => {
+        const reqId = ++totalsReq;
+        fetch('/api/invoice_totals.php', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                items: items.map(it => ({ qty: it.qty, price: it.price })),
+                sales_tax_pct: parseFloat(document.getElementById('sales_tax_pct').value) || 0,
+                advanced_tax_pct: parseFloat(document.getElementById('advanced_tax_pct').value) || 0
+            })
+        })
+        .then(r => r.json())
+        .then(d => { if (d.success && reqId === totalsReq) showTotals(d.totals); })
+        .catch(() => {});
+    }, 120);
 }
 
 // ── Update a single row's line total (no DOM rebuild) ──
@@ -366,17 +432,16 @@ function updateRowTotal(idx) {
     if (!tr) return;
     const it = items[idx];
     const lineTotalCell = tr.querySelector('td:nth-child(5)');
-    if (lineTotalCell) lineTotalCell.textContent = fmt(it.qty * it.price);
-    const stock = typeof it.stock !== 'undefined' ? it.stock : (PRODUCTS.find(p => p.id === it.id)?.qty ?? 0);
+    if (lineTotalCell) lineTotalCell.textContent = fmt(round2(it.qty * it.price));
+    const stock = availableStock(it.id);
     const badge = tr.querySelector('td:nth-child(3) .badge');
     if (badge) {
         const lowStock = stock <= 5;
         badge.className = 'badge ' + (lowStock ? 'bg-danger' : 'bg-success');
         badge.textContent = stock + ' in stock';
     }
-    const trAny = tr;
-    if (it.qty > stock) trAny.classList.add('table-danger');
-    else trAny.classList.remove('table-danger');
+    if (it.qty > stock) tr.classList.add('table-danger');
+    else tr.classList.remove('table-danger');
 }
 
 function renderRows() {
@@ -393,16 +458,16 @@ function renderRows() {
         const tr = document.createElement('tr');
         tr.className = 'table-row-enter' + (overStock ? ' table-danger' : '');
         tr.innerHTML =
-            '<td><div class="fw-semibold small">' + esc(it.name) + '</div><small class="text-muted font-monospace">#' + String(it.id).padStart(4,'0') + '</small></td>' +
+            '<td><div class="fw-semibold small">' + esc(it.name) + '</div><small class="text-muted font-monospace">' + esc(it.sku || ('#' + String(it.id).padStart(4,'0'))) + '</small></td>' +
             '<td class="text-center"><div class="d-inline-flex align-items-center gap-1">' +
                 '<button type="button" class="qty-btn btn-qty-dec" data-i="'+idx+'">&#8722;</button>' +
-                '<input type="number" min="1" max="'+stock+'" value="'+it.qty+'" data-i="'+idx+'" class="qty-input form-control form-control-sm text-center" style="width:60px">' +
+                '<input type="number" min="1" max="'+stock+'" step="1" value="'+it.qty+'" data-i="'+idx+'" class="qty-input form-control form-control-sm text-center" style="width:65px" onwheel="this.blur()">' +
                 '<button type="button" class="qty-btn btn-qty-inc" data-i="'+idx+'">+</button>' +
             '</div></td>' +
             '<td class="text-center"><span class="badge '+(lowStock ? 'bg-danger' : 'bg-success')+'" style="font-size:.7rem">'+stock+' in stock</span></td>' +
             '<td><div class="input-group input-group-sm"><span class="input-group-text bg-white" style="font-size:.75rem">Rs</span>' +
-                '<input type="number" min="0" step="0.01" value="'+it.price+'" data-i="'+idx+'" class="price-input form-control fw-semibold"></div></td>' +
-            '<td class="text-end fw-bold">'+fmt(it.qty*it.price)+'</td>' +
+                '<input type="number" min="0" step="0.01" value="'+it.price+'" data-i="'+idx+'" class="price-input form-control fw-semibold" onwheel="this.blur()"></div></td>' +
+            '<td class="text-end fw-bold">'+fmt(round2(it.qty*it.price))+'</td>' +
             '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-rm="'+idx+'" title="Remove">&#10005;</button></td>';
         body.appendChild(tr);
     });
@@ -415,7 +480,7 @@ function renderRows() {
     }));
     body.querySelectorAll('.qty-input').forEach(el=>el.addEventListener('input',e=>{
         const i=parseInt(e.target.dataset.i);
-        const val=parseFloat(e.target.value)||0;
+        const val=parseInt(e.target.value)||0;
         const stock = typeof items[i].stock !== 'undefined' ? items[i].stock : (PRODUCTS.find(p => p.id === items[i].id)?.qty ?? 0);
         if(val>stock){items[i].qty=stock;e.target.value=stock;showModal('Stock Limit','Cannot exceed available stock of '+stock+'.','error');}
         else{items[i].qty=val;}
@@ -473,7 +538,7 @@ function pickProduct(i) {
         if (existing.qty >= p.qty) { showModal('Insufficient Stock', 'Cannot add more. Only ' + p.qty + ' in stock.', 'error'); return; }
         existing.qty++;
     } else {
-        items.push({ id: p.id, name: p.name, qty: 1, price: p.price, stock: p.qty });
+        items.push({ id: p.id, name: p.name, qty: 1, price: p.price, stock: p.qty, sku: p.sku || '' });
     }
     pSearch.value = '';
     pAcList.classList.add('d-none');
@@ -760,7 +825,7 @@ function pickSalesman(i) {
     document.getElementById('salesmanInfo').classList.remove('d-none');
 }
 
-// ── Submit ──
+// ── Submit (Create / Edit) ──
 document.getElementById('sales_tax_pct').addEventListener('input', recalc);
 document.getElementById('advanced_tax_pct').addEventListener('input', recalc);
 
@@ -769,32 +834,29 @@ document.getElementById('saleForm').addEventListener('submit', function(e) {
     if (!selectedCustomer) { showModal('Error', 'Please select a customer first.', 'error'); cSearch.focus(); return; }
     if (!items.length) { showModal('Error', 'Please add at least one product.', 'error'); return; }
 
-    // Pre-submit stock check
-    for (const it of items) {
-        const stock = typeof it.stock !== 'undefined' ? it.stock : (PRODUCTS.find(p => p.id === it.id)?.qty ?? 0);
-        if (it.qty > stock) {
-            showModal('Insufficient Stock', it.name + ': requested ' + it.qty + ' but only ' + stock + ' available.', 'error');
-            return;
-        }
-    }
-
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true; btn.textContent = 'Saving...';
+    btn.disabled = true; btn.textContent = IS_EDIT ? 'Updating...' : 'Saving...';
 
     const f = e.target;
     const data = {
+        order_id: IS_EDIT ? EDIT_ID : null,
         customer_code: selectedCustomer.code,
-        customer_name: f.customer_name.value, contact: f.contact.value,
+        customer_name: f.customer_name.value,
+        contact: f.contact.value,
         destination: f.destination.value,
         salesman_id: f.salesman_id.value,
-        ntn_no: f.ntn_no.value, sales_tax_no: f.sales_tax_no.value,
-        cnic: f.cnic.value, address: f.address.value,
-        sales_tax_pct: f.sales_tax_pct.value,
-        advanced_tax_pct: f.advanced_tax_pct.value,
+        ntn_no: f.ntn_no.value,
+        sales_tax_no: f.sales_tax_no.value,
+        cnic: f.cnic.value,
+        address: f.address.value,
+        sales_tax_pct: parseFloat(f.sales_tax_pct.value) || 0,
+        advanced_tax_pct: parseFloat(f.advanced_tax_pct.value) || 0,
         items: items.map(it => ({ product_id: it.id, qty: it.qty, price: it.price })),
     };
 
-    fetch('/controllers/sale_order_create.php', {
+    const targetUrl = IS_EDIT ? '/controllers/sale_order_update.php' : '/controllers/sale_order_create.php';
+
+    fetch(targetUrl, {
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
     })
     .then(r => r.json())
@@ -804,14 +866,79 @@ document.getElementById('saleForm').addEventListener('submit', function(e) {
             setTimeout(() => { window.location.href = '/views/sales.php'; }, 1200);
         } else {
             showModal('Error', d.message, 'error');
-            btn.disabled = false; btn.textContent = 'Save Order';
+            btn.disabled = false; btn.textContent = IS_EDIT ? 'Update Order' : 'Save Order';
         }
     })
-    .catch(() => { showModal('Error', 'Submission failed.', 'error'); btn.disabled = false; btn.textContent = 'Save Order'; });
+    .catch(() => { showModal('Error', 'Submission failed.', 'error'); btn.disabled = false; btn.textContent = IS_EDIT ? 'Update Order' : 'Save Order'; });
 });
 
-recalc();
+// Load edit data if in edit mode
+if (IS_EDIT) {
+    fetch('/api/sale_order_get.php?id=' + EDIT_ID)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.success) {
+                showModal('Error', 'Failed to load order data.', 'error');
+                return;
+            }
+            const ord = d.order;
+            selectedCustomer = {
+                code: ord.customer_code,
+                customer_name: ord.customer_name,
+                contact: ord.contact,
+                destination: ord.destination,
+                address: ord.address,
+                ntn_no: ord.ntn_no,
+                sales_tax_no: ord.sales_tax_no,
+                cnic: ord.cnic
+            };
+
+            cSearch.value = ord.customer_code || '';
+            document.getElementById('customer_name').value = ord.customer_name || '';
+            document.getElementById('contact').value = ord.contact || '';
+            document.getElementById('destination').value = ord.destination || '';
+            document.getElementById('address').value = ord.address || '';
+            document.getElementById('ntn_no').value = ord.ntn_no || '';
+            document.getElementById('sales_tax_no').value = ord.sales_tax_no || '';
+            document.getElementById('cnic').value = ord.cnic || '';
+
+            document.getElementById('fetchBadge').classList.remove('d-none');
+            const nm = ord.customer_name || 'Customer';
+            document.getElementById('summary_name').textContent = nm;
+            document.getElementById('summary_contact').textContent = ord.contact || 'No Contact';
+            document.getElementById('customerAvatar').textContent = nm.charAt(0).toUpperCase();
+            document.getElementById('customerSummaryCard').classList.remove('d-none');
+
+            if (d.salesman) {
+                selectedSalesman = d.salesman;
+                document.getElementById('salesman_id').value = d.salesman.id;
+                smSearch.value = d.salesman.salesman_id + ' - ' + d.salesman.name;
+                document.getElementById('sm_name').textContent = d.salesman.name;
+                document.getElementById('sm_detail').textContent = [d.salesman.salesman_id, d.salesman.phone, d.salesman.cnic].filter(Boolean).join(' | ');
+                document.getElementById('salesmanInfo').classList.remove('d-none');
+            }
+
+            // Populate items with line items
+            items = (d.items || []).map(it => {
+                // In edit mode, available stock for validation is current stock + qty in this order
+                const stock = (parseInt(it.stock_qty) || 0) + parseInt(it.quantity);
+                return {
+                    id: parseInt(it.product_id),
+                    name: it.product_name,
+                    qty: parseInt(it.quantity),
+                    price: parseFloat(it.price),
+                    stock: stock,
+                    sku: it.sku || ''
+                };
+            });
+
+            renderRows();
+            recalc();
+        });
+} else {
+    recalc();
+}
 </script>
 <?php
 $content = ob_get_clean();
-render_page('New Sale Order', $content, modal_markup_html());
+render_page($isEdit ? 'Edit Sale Order' : 'New Sale Order', $content, modal_markup_html());

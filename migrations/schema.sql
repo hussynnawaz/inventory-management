@@ -276,6 +276,9 @@ CREATE TABLE customer_payments (
   customer_id       INT            NOT NULL,
   sale_order_id     INT            DEFAULT NULL,
   payment_method    VARCHAR(20)    NOT NULL DEFAULT 'cash',
+  -- Date the customer actually paid. Independent from sale_orders.order_date
+  -- (invoice date) and never derived from it.
+  payment_date      DATE           DEFAULT NULL,
   amount            DECIMAL(12,2)  NOT NULL,
   previous_balance  DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
   remaining_balance DECIMAL(12,2)  NOT NULL DEFAULT 0.00,
@@ -288,6 +291,7 @@ CREATE TABLE customer_payments (
   UNIQUE KEY uk_cust_payments_receipt (receipt_no),
   INDEX idx_cust_payments_customer_id (customer_id),
   INDEX idx_cust_payments_order_id (sale_order_id),
+  INDEX idx_cust_payments_payment_date (payment_date),
   INDEX idx_cust_payments_created (created_at),
   CONSTRAINT fk_cust_payments_customer FOREIGN KEY (customer_id)   REFERENCES customers(id)  ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT fk_cust_payments_order    FOREIGN KEY (sale_order_id) REFERENCES sale_orders(id) ON UPDATE CASCADE ON DELETE SET NULL,

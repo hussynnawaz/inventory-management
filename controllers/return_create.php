@@ -1,6 +1,6 @@
 <?php
 // POST handler for creating product return.
-// Input JSON: sale_order_id (optional), items: [{ product_id, qty, refund_price, reason }]
+// Input JSON: sale_order_id (required/optional), items: [{ product_id, qty, refund_price, reason }]
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
 require_login();
@@ -40,17 +40,40 @@ try {
     $savedReturns = [];
 
     foreach ($items as $it) {
-        $count++;
-        $retNo = $returnNoBase . str_pad($count, 4, '0', STR_PAD_LEFT);
         $pid = (int)($it['product_id'] ?? 0);
         $qty = (int)($it['qty'] ?? 0);
-        $refundPrice = (float)($it['refund_price'] ?? 0);
+        $refundPrice = round((float)($it['refund_price'] ?? 0), 2);
         $reason = trim($it['reason'] ?? ($input['default_reason'] ?? ''));
-        $lineTotal = $qty * $refundPrice;
 
         if ($pid <= 0) fail('Invalid product selected.');
         if ($qty <= 0) fail('Return quantity must be greater than 0.');
         if ($refundPrice < 0) fail('Refund price cannot be negative.');
+
+        // If linked to a sale order, check returnable limit
+        if ($saleOrderId) {
+            $soiStmt = $pdo->prepare('SELECT quantity FROM sale_order_items WHERE sale_order_id = ? AND product_id = ?');
+            $soiStmt->execute([$saleOrderId, $pid]);
+            $soldQty = (int)$soiStmt->fetchColumn();
+            if ($soldQty <= 0) {
+                fail('Product is not part of this sale order.');
+            }
+
+            $retStmt = $pdo->prepare('SELECT COALESCE(SUM(quantity), 0) FROM returns WHERE sale_order_id = ? AND product_id = ?');
+            $retStmt->execute([$saleOrderId, $pid]);
+            $prevRetQty = (int)$retStmt->fetchColumn();
+
+            $maxReturnable = max(0, $soldQty - $prevRetQty);
+            if ($qty > $maxReturnable) {
+                $pNameStmt = $pdo->prepare('SELECT name FROM products WHERE id = ?');
+                $pNameStmt->execute([$pid]);
+                $pName = $pNameStmt->fetchColumn() ?: 'Product';
+                fail("Cannot return {$qty} units of {$pName}. Maximum returnable quantity is {$maxReturnable}.");
+            }
+        }
+
+        $lineTotal = round($qty * $refundPrice, 2);
+        $count++;
+        $retNo = $returnNoBase . str_pad($count, 4, '0', STR_PAD_LEFT);
 
         $itemStmt->execute([$retNo, $saleOrderId, $pid, $qty, $refundPrice, $lineTotal, $reason, current_user()['id']]);
         $updateProdStmt->execute([$qty, $pid]);

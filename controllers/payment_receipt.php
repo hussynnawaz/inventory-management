@@ -3,6 +3,7 @@
 // GET ?receipt_no=PAY-XXXXXXXX-XXXX or ?id=<payment_id>
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/invoice_calculations.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 require_login();
 
@@ -69,10 +70,23 @@ $previousBalance = (float)$first['previous_balance'];
 
 // Payment method details
 $method = $first['payment_method'];
-$methodLabel = $method === 'cash' ? 'Cash' : 'Bank Transfer';
+$methodLabels = [
+    'cash'         => 'Cash',
+    'bank'         => 'Bank Transfer',
+    'bank_transfer'=> 'Bank Transfer',
+    'cheque'       => 'Cheque',
+    'card'         => 'Card',
+    'other'        => 'Other',
+];
+$methodLabel = $methodLabels[$method] ?? ucfirst((string)$method);
 $collector = $first['collector_name'] ?? '';
 $txnId     = $first['transaction_id'] ?? '';
 $bankChan  = $first['bank_channel'] ?? '';
+
+// Payment Date = when the customer actually paid (falls back to created_at
+// for legacy rows). Kept separate from "Recorded" (created_at).
+$paymentDate = invoice_payment_date($first);
+$paymentDateDisplay = invoice_fmt_date($paymentDate);
 
 // Related invoices
 $relatedOrders = [];
@@ -228,7 +242,11 @@ $html = "
                 <td style='padding:2px 0;font-weight:bold;color:#000;white-space:nowrap;'>".e2($receiptNo)."</td>
             </tr>
             <tr>
-                <td style='padding:2px 8px 2px 0;text-align:right;color:#555;'>Date:</td>
+                <td style='padding:2px 8px 2px 0;text-align:right;color:#555;'>Payment Date:</td>
+                <td style='padding:2px 0;font-weight:bold;color:#000;white-space:nowrap;'>".e2($paymentDateDisplay)."</td>
+            </tr>
+            <tr>
+                <td style='padding:2px 8px 2px 0;text-align:right;color:#555;'>Recorded:</td>
                 <td style='padding:2px 0;color:#000;white-space:nowrap;'>".e2(date('d M Y, h:i A', strtotime($first['created_at'])))."</td>
             </tr>
         </table>
@@ -255,6 +273,7 @@ $html = "
         <div style='font-size:11px;font-weight:bold;margin-bottom:6px;border-bottom:1px solid #16a34a;padding-bottom:3px;color:#16a34a;'>Payment Details</div>
         <table width='100%' cellpadding='0' cellspacing='0'>
             ".infoRow('Payment Method', e2($methodLabel))."
+            ".infoRow('Payment Date', e2($paymentDateDisplay))."
             {$paymentDetailRows}
             ".infoRow('Amount Paid', '<span style=\"color:#16a34a;font-size:13px;\">Rs '.fmt($totalPaid).'</span>')."
         </table>
